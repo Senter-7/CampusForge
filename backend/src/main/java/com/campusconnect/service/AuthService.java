@@ -22,6 +22,9 @@ public class AuthService {
     private JwtUtil jwtUtil;
 
     public String register(RegisterDto registerDto) {
+        if (userRepository.findByEmail(registerDto.getEmail()).isPresent()) {
+            throw new RuntimeException("Email already registered");
+        }
         User user = new User();
         user.setUsername(registerDto.getUsername());
         user.setEmail(registerDto.getEmail());
