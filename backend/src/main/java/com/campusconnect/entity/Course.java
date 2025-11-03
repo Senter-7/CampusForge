@@ -1,26 +1,44 @@
- package com.campusconnect.entity;
+package com.campusconnect.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 
 @Entity
+@Table(name = "courses")
 public class Course {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long courseId;
+
+    @Column(nullable = false)
     private String name;
-    private double averageRating;
-    private int ratingCount;
+
+    @ManyToOne
+    @JoinColumn(name = "professor_id", referencedColumnName = "professor_id")
+    private Professor professor;
+    
+    @ManyToOne
+    @JoinColumn(name = "university_id")
+    private University university;
+    
+    @Lob
+    private String description;
+
+    public Course(){};
+
+    public Course(Long courseId) {
+        this.courseId = courseId;
+    }
 
     // Getters and Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getCourseId() { return courseId; }
+    public void setCourseId(Long courseId) { this.courseId = courseId; }
+
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
-    public double getAverageRating() { return averageRating; }
-    public void setAverageRating(double averageRating) { this.averageRating = averageRating; }
-    public int getRatingCount() { return ratingCount; }
-    public void setRatingCount(int ratingCount) { this.ratingCount = ratingCount; }
+
+    public Professor getProfessor() { return professor; }
+    public void setProfessor(Professor professor) { this.professor = professor; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 }

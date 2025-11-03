@@ -1,36 +1,69 @@
 package com.campusconnect.entity;
 
 import jakarta.persistence.*;
-
-import java.util.ArrayList;
-import java.util.List;
+import java.sql.Timestamp;
+import java.util.Set;
 
 @Entity
+@Table(name = "projects")
 public class Project {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long projectId;
+
+    @Column(nullable = false, length = 150)
     private String title;
+
+    @Lob
+    @Column(nullable = false)
     private String description;
-    private String skills;
-    private String interests;
-    private Long ownerId;
-    @ElementCollection
-    private List<Long> memberIds = new ArrayList<>();
+
+    @ManyToOne
+    @JoinColumn(name = "creator_id")
+    private User creator;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Status status = Status.OPEN;
+
+    @Column(nullable = false)
+    private Timestamp createdAt = new Timestamp(System.currentTimeMillis());
+
+    @ManyToMany
+    @JoinTable(
+        name = "project_skills",
+        joinColumns = @JoinColumn(name = "project_id"),
+        inverseJoinColumns = @JoinColumn(name = "skill_id")
+    )
+    private Set<Skill> skills;
+
+    @ManyToMany
+    @JoinTable(
+        name = "project_members",
+        joinColumns = @JoinColumn(name = "project_id"),
+        inverseJoinColumns = @JoinColumn(name = "user_id")
+    )
+    private Set<User> members;
+
+    public enum Status {
+        OPEN, ONGOING, COMPLETED
+    }
 
     // Getters and Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getProjectId() { return projectId; }
+    public void setProjectId(Long projectId) { this.projectId = projectId; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
-    public String getSkills() { return skills; }
-    public void setSkills(String skills) { this.skills = skills; }
-    public String getInterests() { return interests; }
-    public void setInterests(String interests) { this.interests = interests; }
-    public Long getOwnerId() { return ownerId; }
-    public void setOwnerId(Long ownerId) { this.ownerId = ownerId; }
-    public List<Long> getMemberIds() { return memberIds; }
-    public void setMemberIds(List<Long> memberIds) { this.memberIds = memberIds; }
+    public User getCreator() { return creator; }
+    public void setCreator(User creator) { this.creator = creator; }
+    public Status getStatus() { return status; }
+    public void setStatus(Status status) { this.status = status; }
+    public Timestamp getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
+    public Set<Skill> getSkills() { return skills; }
+    public void setSkills(Set<Skill> skills) { this.skills = skills; }
+    public Set<User> getMembers() { return members; }
+    public void setMembers(Set<User> members) { this.members = members; }
 }

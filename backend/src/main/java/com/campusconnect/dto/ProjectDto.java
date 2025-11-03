@@ -1,29 +1,35 @@
 package com.campusconnect.dto;
 
-import java.util.List;
+import java.sql.Timestamp;
+import java.util.Set;
+
+import com.campusconnect.entity.Project;
 
 public class ProjectDto {
-    private Long id;
+    private Long projectId;
     private String title;
     private String description;
-    private String skills;
-    private String interests;
-    private Long ownerId;
-    private List<Long> memberIds;
+    private Long creatorId;
+    private String status;
+    private Timestamp createdAt;
+    private Set<SkillDto> skills;
+    private Set<Long> memberIds;
 
-    // Getters and Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getProjectId() { return projectId; }
+    public void setProjectId(Long projectId) { this.projectId = projectId; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
-    public String getSkills() { return skills; }
-    public void setSkills(String skills) { this.skills = skills; }
-    public String getInterests() { return interests; }
-    public void setInterests(String interests) { this.interests = interests; }
-    public Long getOwnerId() { return ownerId; }
-    public void setOwnerId(Long ownerId) { this.ownerId = ownerId; }
-    public List<Long> getMemberIds() { return memberIds; }
-    public void setMemberIds(List<Long> memberIds) { this.memberIds = memberIds; }
+    public Long getCreatorId() { return creatorId; }
+    public void setCreatorId(Long creatorId) { this.creatorId = creatorId; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+    public Timestamp getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
+    public Set<SkillDto> getSkills() { return skills; }
+    public void setSkills(Set<SkillDto> skills) { this.skills = skills; }
+    public Set<Long> getMemberIds() { return memberIds; }
+    public void setMemberIds(Set<Long> memberIds) { this.memberIds = memberIds; }
+    
 }

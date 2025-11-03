@@ -1,0 +1,15 @@
+# ===== Node / React frontend =====
+frontend/
+
+# ===== Java backend =====
+
+backend/.env
+backend/.idea/
+backend/.mvn/
+backend/mvnw
+backend/mvnw.cmd
+
+# ===== Common =====
+*.log
+.DS_Store
+.env

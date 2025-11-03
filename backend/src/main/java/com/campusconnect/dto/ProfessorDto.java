@@ -1,15 +1,29 @@
 package com.campusconnect.dto;
 
 public class ProfessorDto {
-    private Long id;
+    private Long professorId;
     private String name;
-    private double averageRating;
+    private String department;
+    private String email;
+    private Long universityId;
+    private String universityName;
 
     // Getters and Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getUniversityId() { return universityId; }
+    public void setUniversityId(Long universityId) { this.universityId = universityId; }
+
+    public String getUniversityName() { return universityName; }
+    public void setUniversityName(String universityName) { this.universityName = universityName; }
+
+    public Long getProfessorId() { return professorId; }
+    public void setProfessorId(Long professorId) { this.professorId = professorId; }
+
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
-    public double getAverageRating() { return averageRating; }
-    public void setAverageRating(double averageRating) { this.averageRating = averageRating; }
+
+    public String getDepartment() { return department; }
+    public void setDepartment(String department) { this.department = department; }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
 }

@@ -1,0 +1,332 @@
+.
+├── backend
+│   ├── HELP.md
+│   ├── mvnw
+│   ├── mvnw.cmd
+│   ├── pom.xml
+│   ├── src
+│   │   ├── main
+│   │   │   ├── java
+│   │   │   │   └── com
+│   │   │   │       └── campusconnect
+│   │   │   │           ├── BackendApplication.java
+│   │   │   │           ├── config
+│   │   │   │           │   └── SecurityConfig.java
+│   │   │   │           ├── controller
+│   │   │   │           │   ├── AdminController.java
+│   │   │   │           │   ├── AttachmentController.java
+│   │   │   │           │   ├── AuthController.java
+│   │   │   │           │   ├── CollaborationRequestController.java
+│   │   │   │           │   ├── CourseController.java
+│   │   │   │           │   ├── DashboardController.java
+│   │   │   │           │   ├── HealthController.java
+│   │   │   │           │   ├── InterestController.java
+│   │   │   │           │   ├── MessageController.java
+│   │   │   │           │   ├── NotificationController.java
+│   │   │   │           │   ├── ProfessorController.java
+│   │   │   │           │   ├── ProjectController.java
+│   │   │   │           │   ├── RatingController.java
+│   │   │   │           │   ├── StudentController.java
+│   │   │   │           │   ├── TaskCommentController.java
+│   │   │   │           │   ├── TaskController.java
+│   │   │   │           │   ├── UniversityController.java
+│   │   │   │           │   └── UserController.java
+│   │   │   │           ├── dto
+│   │   │   │           │   ├── AttachmentDto.java
+│   │   │   │           │   ├── AuthResponseDto.java
+│   │   │   │           │   ├── CollaborationRequestDto.java
+│   │   │   │           │   ├── CourseDto.java
+│   │   │   │           │   ├── DashboardDto.java
+│   │   │   │           │   ├── InterestDto.java
+│   │   │   │           │   ├── LoginDto.java
+│   │   │   │           │   ├── MessageDto.java
+│   │   │   │           │   ├── MessageRequest.java
+│   │   │   │           │   ├── MessageSummaryDto.java
+│   │   │   │           │   ├── NotificationDto.java
+│   │   │   │           │   ├── ProfessorDto.java
+│   │   │   │           │   ├── ProjectDto.java
+│   │   │   │           │   ├── ProjectMemberDto.java
+│   │   │   │           │   ├── RatingDto.java
+│   │   │   │           │   ├── RegisterDto.java
+│   │   │   │           │   ├── SkillDto.java
+│   │   │   │           │   ├── TaskCommentDTO.java
+│   │   │   │           │   ├── TaskDto.java
+│   │   │   │           │   ├── TaskRequestDTO.java
+│   │   │   │           │   ├── TaskResponseDTO.java
+│   │   │   │           │   ├── UniversityDto.java
+│   │   │   │           │   └── UserDto.java
+│   │   │   │           ├── entity
+│   │   │   │           │   ├── Attachment.java
+│   │   │   │           │   ├── CollaborationRequest.java
+│   │   │   │           │   ├── Course.java
+│   │   │   │           │   ├── Interest.java
+│   │   │   │           │   ├── Message.java
+│   │   │   │           │   ├── Notification.java
+│   │   │   │           │   ├── Professor.java
+│   │   │   │           │   ├── Project.java
+│   │   │   │           │   ├── ProjectMember.java
+│   │   │   │           │   ├── Rating.java
+│   │   │   │           │   ├── Skill.java
+│   │   │   │           │   ├── Task.java
+│   │   │   │           │   ├── TaskComment.java
+│   │   │   │           │   ├── University.java
+│   │   │   │           │   └── User.java
+│   │   │   │           ├── exception
+│   │   │   │           │   ├── GlobalExceptionHandler.java
+│   │   │   │           │   └── ResourceNotFoundException.java
+│   │   │   │           ├── mapper
+│   │   │   │           │   ├── CollaborationRequestMapper.java
+│   │   │   │           │   ├── DashboardMapper.java
+│   │   │   │           │   ├── MessageMapper.java
+│   │   │   │           │   ├── ProjectMapper.java
+│   │   │   │           │   ├── ProjectMemberMapper.java
+│   │   │   │           │   ├── RatingMapper.java
+│   │   │   │           │   ├── TaskMapper.java
+│   │   │   │           │   └── UserMapper.java
+│   │   │   │           ├── repository
+│   │   │   │           │   ├── AttachmentRepository.java
+│   │   │   │           │   ├── CollaborationRequestRepository.java
+│   │   │   │           │   ├── CourseRepository.java
+│   │   │   │           │   ├── InterestRepository.java
+│   │   │   │           │   ├── MessageRepository.java
+│   │   │   │           │   ├── NotificationRepository.java
+│   │   │   │           │   ├── ProfessorRepository.java
+│   │   │   │           │   ├── ProjectMemberRepository.java
+│   │   │   │           │   ├── ProjectRepository.java
+│   │   │   │           │   ├── RatingRepository.java
+│   │   │   │           │   ├── SkillRepository.java
+│   │   │   │           │   ├── TaskCommentRepository.java
+│   │   │   │           │   ├── TaskRepository.java
+│   │   │   │           │   ├── UniversityRepository.java
+│   │   │   │           │   └── UserRepository.java
+│   │   │   │           ├── security
+│   │   │   │           │   ├── CustomUserDetailsService.java
+│   │   │   │           │   ├── JwtAuthenticationFilter.java
+│   │   │   │           │   ├── JwtUtil.java
+│   │   │   │           │   ├── ProjectSecurity.java
+│   │   │   │           │   ├── RatingSecurity.java
+│   │   │   │           │   └── UserPrincipal.java
+│   │   │   │           └── service
+│   │   │   │               ├── AdminService.java
+│   │   │   │               ├── AdminServiceImpl.java
+│   │   │   │               ├── AttachmentService.java
+│   │   │   │               ├── AttachmentServiceImpl.java
+│   │   │   │               ├── AuthService.java
+│   │   │   │               ├── CollaborationRequestService.java
+│   │   │   │               ├── CollaborationRequestServiceImpl.java
+│   │   │   │               ├── CourseService.java
+│   │   │   │               ├── CourseServiceImpl.java
+│   │   │   │               ├── DashboardService.java
+│   │   │   │               ├── DashboardServiceImpl.java
+│   │   │   │               ├── InterestService.java
+│   │   │   │               ├── MessageService.java
+│   │   │   │               ├── MessageServiceImpl.java
+│   │   │   │               ├── NotificationService.java
+│   │   │   │               ├── ProfessorService.java
+│   │   │   │               ├── ProjectMemberService.java
+│   │   │   │               ├── ProjectMemberServiceImpl.java
+│   │   │   │               ├── ProjectService.java
+│   │   │   │               ├── ProjectServiceImpl.java
+│   │   │   │               ├── RatingService.java
+│   │   │   │               ├── RatingServiceImpl.java
+│   │   │   │               ├── SkillService.java
+│   │   │   │               ├── StudentService.java
+│   │   │   │               ├── StudentServiceImpl.java
+│   │   │   │               ├── TaskCommentService.java
+│   │   │   │               ├── TaskCommentServiceImpl.java
+│   │   │   │               ├── TaskService.java
+│   │   │   │               ├── TaskServiceImpl.java
+│   │   │   │               ├── UniversityService.java
+│   │   │   │               └── UserService.java
+│   │   │   └── resources
+│   │   │       └── application.properties
+│   │   └── test
+│   │       └── java
+│   │           └── com
+│   │               └── campusconnect
+│   │                   └── BackendApplicationTests.java
+│   ├── structure.txt
+│   └── target
+│       ├── backend-0.0.1-SNAPSHOT.jar
+│       ├── backend-0.0.1-SNAPSHOT.jar.original
+│       ├── classes
+│       │   ├── application.properties
+│       │   └── com
+│       │       └── campusconnect
+│       │           ├── BackendApplication.class
+│       │           ├── config
+│       │           │   └── SecurityConfig.class
+│       │           ├── controller
+│       │           │   ├── AdminController.class
+│       │           │   ├── AttachmentController.class
+│       │           │   ├── AuthController.class
+│       │           │   ├── CollaborationRequestController.class
+│       │           │   ├── CourseController.class
+│       │           │   ├── DashboardController.class
+│       │           │   ├── HealthController.class
+│       │           │   ├── InterestController.class
+│       │           │   ├── MessageController.class
+│       │           │   ├── NotificationController.class
+│       │           │   ├── ProfessorController.class
+│       │           │   ├── ProjectController.class
+│       │           │   ├── RatingController.class
+│       │           │   ├── StudentController.class
+│       │           │   ├── TaskCommentController.class
+│       │           │   ├── TaskController.class
+│       │           │   ├── UniversityController.class
+│       │           │   └── UserController.class
+│       │           ├── dto
+│       │           │   ├── AttachmentDto.class
+│       │           │   ├── AuthResponseDto.class
+│       │           │   ├── CollaborationRequestDto.class
+│       │           │   ├── CourseDto.class
+│       │           │   ├── DashboardDto$DashboardDtoBuilder.class
+│       │           │   ├── DashboardDto.class
+│       │           │   ├── InterestDto.class
+│       │           │   ├── LoginDto.class
+│       │           │   ├── MessageDto$MessageDtoBuilder.class
+│       │           │   ├── MessageDto.class
+│       │           │   ├── MessageRequest.class
+│       │           │   ├── MessageSummaryDto$MessageSummaryDtoBuilder.class
+│       │           │   ├── MessageSummaryDto.class
+│       │           │   ├── NotificationDto.class
+│       │           │   ├── ProfessorDto.class
+│       │           │   ├── ProjectDto.class
+│       │           │   ├── ProjectMemberDto.class
+│       │           │   ├── RatingDto.class
+│       │           │   ├── RegisterDto.class
+│       │           │   ├── SkillDto.class
+│       │           │   ├── TaskCommentDTO$TaskCommentDTOBuilder.class
+│       │           │   ├── TaskCommentDTO.class
+│       │           │   ├── TaskDto.class
+│       │           │   ├── TaskRequestDTO$TaskRequestDTOBuilder.class
+│       │           │   ├── TaskRequestDTO.class
+│       │           │   ├── TaskResponseDTO$TaskResponseDTOBuilder.class
+│       │           │   ├── TaskResponseDTO.class
+│       │           │   ├── UniversityDto$UniversityDtoBuilder.class
+│       │           │   ├── UniversityDto.class
+│       │           │   └── UserDto.class
+│       │           ├── entity
+│       │           │   ├── Attachment.class
+│       │           │   ├── CollaborationRequest$Status.class
+│       │           │   ├── CollaborationRequest.class
+│       │           │   ├── Course.class
+│       │           │   ├── Interest.class
+│       │           │   ├── Message$MessageBuilder.class
+│       │           │   ├── Message.class
+│       │           │   ├── Notification.class
+│       │           │   ├── Professor.class
+│       │           │   ├── Project$Status.class
+│       │           │   ├── Project.class
+│       │           │   ├── ProjectMember$Role.class
+│       │           │   ├── ProjectMember.class
+│       │           │   ├── Rating.class
+│       │           │   ├── Skill.class
+│       │           │   ├── Task$Priority.class
+│       │           │   ├── Task$Status.class
+│       │           │   ├── Task$TaskBuilder.class
+│       │           │   ├── Task.class
+│       │           │   ├── TaskComment$TaskCommentBuilder.class
+│       │           │   ├── TaskComment.class
+│       │           │   ├── University$UniversityBuilder.class
+│       │           │   ├── University.class
+│       │           │   ├── User$Role.class
+│       │           │   └── User.class
+│       │           ├── exception
+│       │           │   ├── GlobalExceptionHandler.class
+│       │           │   └── ResourceNotFoundException.class
+│       │           ├── mapper
+│       │           │   ├── CollaborationRequestMapper.class
+│       │           │   ├── DashboardMapper.class
+│       │           │   ├── MessageMapper.class
+│       │           │   ├── ProjectMapper.class
+│       │           │   ├── ProjectMemberMapper.class
+│       │           │   ├── RatingMapper.class
+│       │           │   ├── TaskMapper.class
+│       │           │   └── UserMapper.class
+│       │           ├── repository
+│       │           │   ├── AttachmentRepository.class
+│       │           │   ├── CollaborationRequestRepository.class
+│       │           │   ├── CourseRepository.class
+│       │           │   ├── InterestRepository.class
+│       │           │   ├── MessageRepository.class
+│       │           │   ├── NotificationRepository.class
+│       │           │   ├── ProfessorRepository.class
+│       │           │   ├── ProjectMemberRepository.class
+│       │           │   ├── ProjectRepository.class
+│       │           │   ├── RatingRepository.class
+│       │           │   ├── SkillRepository.class
+│       │           │   ├── TaskCommentRepository.class
+│       │           │   ├── TaskRepository.class
+│       │           │   ├── UniversityRepository.class
+│       │           │   └── UserRepository.class
+│       │           ├── security
+│       │           │   ├── CustomUserDetailsService.class
+│       │           │   ├── JwtAuthenticationFilter.class
+│       │           │   ├── JwtUtil.class
+│       │           │   ├── ProjectSecurity.class
+│       │           │   ├── RatingSecurity.class
+│       │           │   └── UserPrincipal.class
+│       │           └── service
+│       │               ├── AdminService.class
+│       │               ├── AdminServiceImpl.class
+│       │               ├── AttachmentService.class
+│       │               ├── AttachmentServiceImpl.class
+│       │               ├── AuthService.class
+│       │               ├── CollaborationRequestService.class
+│       │               ├── CollaborationRequestServiceImpl.class
+│       │               ├── CourseService.class
+│       │               ├── CourseServiceImpl.class
+│       │               ├── DashboardService.class
+│       │               ├── DashboardServiceImpl.class
+│       │               ├── InterestService.class
+│       │               ├── MessageService.class
+│       │               ├── MessageServiceImpl.class
+│       │               ├── NotificationService.class
+│       │               ├── ProfessorService.class
+│       │               ├── ProjectMemberService.class
+│       │               ├── ProjectMemberServiceImpl.class
+│       │               ├── ProjectService.class
+│       │               ├── ProjectServiceImpl.class
+│       │               ├── RatingService.class
+│       │               ├── RatingServiceImpl.class
+│       │               ├── SkillService.class
+│       │               ├── StudentService.class
+│       │               ├── StudentServiceImpl.class
+│       │               ├── TaskCommentService.class
+│       │               ├── TaskCommentServiceImpl.class
+│       │               ├── TaskService.class
+│       │               ├── TaskServiceImpl.class
+│       │               ├── UniversityService.class
+│       │               └── UserService.class
+│       ├── generated-sources
+│       │   └── annotations
+│       ├── generated-test-sources
+│       │   └── test-annotations
+│       ├── maven-archiver
+│       │   └── pom.properties
+│       ├── maven-status
+│       │   └── maven-compiler-plugin
+│       │       ├── compile
+│       │       │   └── default-compile
+│       │       │       ├── createdFiles.lst
+│       │       │       └── inputFiles.lst
+│       │       └── testCompile
+│       │           └── default-testCompile
+│       │               ├── createdFiles.lst
+│       │               └── inputFiles.lst
+│       ├── surefire-reports
+│       │   ├── TEST-com.campusconnect.BackendApplicationTests.xml
+│       │   └── com.campusconnect.BackendApplicationTests.txt
+│       └── test-classes
+│           └── com
+│               └── campusconnect
+│                   └── BackendApplicationTests.class
+├── doc
+│   ├── Class_Diagram_v3.png
+│   ├── SequenceDiagrams
+│   ├── backend_doc
+│   ├── classdiagram_SD&T.png
+│   └── project.md
+├── frontend
+└── structure.txt

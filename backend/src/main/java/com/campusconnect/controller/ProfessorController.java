@@ -1,4 +1,4 @@
- package com.campusconnect.controller;
+package com.campusconnect.controller;
 
 import com.campusconnect.dto.ProfessorDto;
 import com.campusconnect.service.ProfessorService;
@@ -15,13 +15,28 @@ public class ProfessorController {
     @Autowired
     private ProfessorService professorService;
 
-    @GetMapping
-    public List<ProfessorDto> getAllProfessors() {
-        return professorService.getAllProfessors();
+    // 🔹 Create or update professor
+    @PostMapping
+    public ResponseEntity<ProfessorDto> saveProfessor(@RequestBody ProfessorDto dto) {
+        return ResponseEntity.ok(professorService.saveProfessor(dto));
     }
 
-    @PostMapping("/rate/{id}")
-    public ResponseEntity<ProfessorDto> rateProfessor(@PathVariable Long id, @RequestParam int rating) {
-        return ResponseEntity.ok(professorService.rateProfessor(id, rating));
+    // 🔹 Get all professors
+    @GetMapping
+    public ResponseEntity<List<ProfessorDto>> getAllProfessors() {
+        return ResponseEntity.ok(professorService.getAllProfessors());
+    }
+
+    // 🔹 Get professor by ID
+    @GetMapping("/{id}")
+    public ResponseEntity<ProfessorDto> getProfessorById(@PathVariable Long id) {
+        return ResponseEntity.ok(professorService.getProfessorById(id));
+    }
+
+    // 🔹 Delete professor
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteProfessor(@PathVariable Long id) {
+        professorService.deleteProfessor(id);
+        return ResponseEntity.noContent().build();
     }
 }

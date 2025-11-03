@@ -1,23 +1,16 @@
 package com.campusconnect.dto;
 
-import java.time.LocalDateTime;
+import lombok.*;
 
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
 public class MessageDto {
-    private Long id;
+    private Long messageId;
     private Long projectId;
-    private Long userId;
+    private Long senderId;
+    private String senderName;
     private String content;
-    private LocalDateTime timestamp;
-
-    // Getters and Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public Long getProjectId() { return projectId; }
-    public void setProjectId(Long projectId) { this.projectId = projectId; }
-    public Long getUserId() { return userId; }
-    public void setUserId(Long userId) { this.userId = userId; }
-    public String getContent() { return content; }
-    public void setContent(String content) { this.content = content; }
-    public LocalDateTime getTimestamp() { return timestamp; }
-    public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
+    private String createdAt;
 }

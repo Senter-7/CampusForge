@@ -1,48 +1,22 @@
-
 package com.campusconnect.service;
 
-import com.campusconnect.dto.TaskDto;
-import com.campusconnect.entity.Task;
-import com.campusconnect.repository.TaskRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+import com.campusconnect.dto.TaskRequestDTO;
+import com.campusconnect.dto.TaskResponseDTO;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
-@Service
-public class TaskService {
+public interface TaskService {
 
-    @Autowired
-    private TaskRepository taskRepository;
+    TaskResponseDTO createTask(TaskRequestDTO dto, Long createdById);
 
-    public List<TaskDto> getTasksForProject(Long projectId) {
-        return taskRepository.findByProjectId(projectId).stream().map(this::toDto).collect(Collectors.toList());
-    }
+    List<TaskResponseDTO> getTasksByProject(Long projectId);
 
-    public TaskDto createTask(TaskDto taskDto) {
-        Task task = new Task();
-        task.setProjectId(taskDto.getProjectId());
-        task.setDescription(taskDto.getDescription());
-        task.setCompleted(taskDto.isCompleted());
-        taskRepository.save(task);
-        return toDto(task);
-    }
+    TaskResponseDTO updateTaskStatus(Long taskId, String status);
 
-    public TaskDto updateTask(Long id, TaskDto taskDto) {
-        Task task = taskRepository.findById(id).orElseThrow();
-        task.setDescription(taskDto.getDescription());
-        task.setCompleted(taskDto.isCompleted());
-        taskRepository.save(task);
-        return toDto(task);
-    }
+    TaskResponseDTO assignTask(Long taskId, Long userId);
 
-    private TaskDto toDto(Task task) {
-        TaskDto dto = new TaskDto();
-        dto.setId(task.getId());
-        dto.setProjectId(task.getProjectId());
-        dto.setDescription(task.getDescription());
-        dto.setCompleted(task.isCompleted());
-        return dto;
-    }
+    void deleteTask(Long taskId);
+    
+    List<TaskResponseDTO> getTasksByAssignee(Long userId);
+
 }

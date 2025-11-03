@@ -1,3 +1,7 @@
 {
-    "java.configuration.updateBuildConfiguration": "interactive"
+    "java.configuration.updateBuildConfiguration": "interactive",
+    "java.configuration.annotationProcessing.enabled": true,
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.imports.gradle.enabled": false,
+    "java.imports.maven.enabled": true
 }

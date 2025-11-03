@@ -1,26 +1,47 @@
 package com.campusconnect.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 
 @Entity
+@Table(name = "professors")
 public class Professor {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "professor_id") 
+    private Long professorId;
+
+    @Column(nullable = false, length = 100)
     private String name;
-    private double averageRating;
-    private int ratingCount;
+
+    @Column(length = 100)
+    private String department;
+
+    @Column(length = 100, unique = true)
+    private String email;
+    @ManyToOne
+    @JoinColumn(name = "university_id")
+    private University university;
+
+    public Professor(){};
+        
+    public Professor(Long professorId) {
+        this.professorId = professorId;
+    }
 
     // Getters and Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getProfessorId() { return professorId; }
+    public void setProfessorId(Long professorId) { this.professorId = professorId; }
+
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
-    public double getAverageRating() { return averageRating; }
-    public void setAverageRating(double averageRating) { this.averageRating = averageRating; }
-    public int getRatingCount() { return ratingCount; }
-    public void setRatingCount(int ratingCount) { this.ratingCount = ratingCount; }
+
+    public String getDepartment() { return department; }
+    public void setDepartment(String department) { this.department = department; }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    
+    
+
 }
