@@ -48,7 +48,14 @@ public class TaskServiceImpl implements TaskService {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new EntityNotFoundException("Task not found"));
 
-        task.setStatus(Task.Status.valueOf(status.toUpperCase()));
+        Task.Status newStatus = Task.Status.valueOf(status.toUpperCase());
+        task.setStatus(newStatus);
+        
+        // Set completedAt when status changes to DONE
+        if (newStatus == Task.Status.DONE && task.getCompletedAt() == null) {
+            task.setCompletedAt(java.time.LocalDateTime.now());
+        }
+        
         return mapToDto(taskRepository.save(task));
     }
 
@@ -72,14 +79,24 @@ public class TaskServiceImpl implements TaskService {
                     .orElseThrow(() -> new EntityNotFoundException("Assignee not found"))
                 : null;
 
+        // Default status to TODO if not provided
+        Task.Status status = dto.getStatus() != null && !dto.getStatus().trim().isEmpty()
+                ? Task.Status.valueOf(dto.getStatus().toUpperCase())
+                : Task.Status.TODO;
+        
+        // Default priority to MEDIUM if not provided
+        Task.Priority priority = dto.getPriority() != null && !dto.getPriority().trim().isEmpty()
+                ? Task.Priority.valueOf(dto.getPriority().toUpperCase())
+                : Task.Priority.MEDIUM;
+
         Task task = Task.builder()
                 .project(project)
                 .createdBy(creator)
                 .assignedTo(assignee)
                 .title(dto.getTitle())
                 .description(dto.getDescription())
-                .status(Task.Status.valueOf(dto.getStatus().toUpperCase()))
-                .priority(Task.Priority.valueOf(dto.getPriority().toUpperCase()))
+                .status(status)
+                .priority(priority)
                 .dueDate(dto.getDueDate())
                 .build();
 
@@ -90,18 +107,16 @@ public class TaskServiceImpl implements TaskService {
     public TaskResponseDTO assignTask(Long taskId, Long userId) {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new EntityNotFoundException("Task not found"));
-        Project project = task.getProject();
 
         User assignee = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
-        // ✅ Only leader or mentor can assign tasks
+        // Verify assignee is a project member
+        Project project = task.getProject();
         ProjectMember member = projectMemberRepository.findByProjectAndUser(project, assignee)
-                .orElseThrow(() -> new RuntimeException("You are not a member of this project."));
-        if (member.getRole() != ProjectMember.Role.LEADER && member.getRole() != ProjectMember.Role.MENTOR) {
-            throw new RuntimeException("Only leader or mentor can assign tasks.");
-        }
+                .orElseThrow(() -> new RuntimeException("Assignee is not a member of this project."));
 
+        // Authorization (only leader/mentor can assign) is handled by @PreAuthorize in the controller
         task.setAssignedTo(assignee);
         return mapToDto(taskRepository.save(task));
     }
@@ -111,18 +126,8 @@ public class TaskServiceImpl implements TaskService {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new EntityNotFoundException("Task not found"));
 
-        Project project = task.getProject();
-        User currentUser = userRepository.findById(task.getCreatedBy().getUserId())
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
-        ProjectMember member = projectMemberRepository.findByProjectAndUser(project, currentUser)
-                .orElseThrow(() -> new RuntimeException("You are not a member of this project."));
-
-        // ✅ Only leaders, mentors, or creators can delete
-        if (member.getRole() == ProjectMember.Role.MEMBER && !task.getCreatedBy().equals(currentUser)) {
-            throw new RuntimeException("You are not authorized to delete this task.");
-        }
-
+        // Authorization is handled by @PreAuthorize in the controller
+        // which checks if user is leader, mentor, creator, or assignee
         taskRepository.delete(task);
     }
 

@@ -33,4 +33,25 @@ public class RatingController {
     public ResponseEntity<List<RatingDto>> getRatingsByCourse(@PathVariable Long courseId) {
         return ResponseEntity.ok(ratingService.getRatingsByCourse(courseId));
     }
+
+    @GetMapping("/professor/{professorId}/average")
+    public ResponseEntity<Double> getAverageRatingForProfessor(@PathVariable Long professorId) {
+        return ResponseEntity.ok(ratingService.getAverageRatingForProfessor(professorId));
+    }
+
+    @GetMapping("/course/{courseId}/average")
+    public ResponseEntity<Double> getAverageRatingForCourse(@PathVariable Long courseId) {
+        return ResponseEntity.ok(ratingService.getAverageRatingForCourse(courseId));
+    }
+
+    @PutMapping("/{ratingId}")
+    public ResponseEntity<RatingDto> updateRating(@PathVariable Long ratingId, @RequestBody RatingDto ratingDto) {
+        return ResponseEntity.ok(ratingService.updateRating(ratingId, ratingDto));
+    }
+
+    @DeleteMapping("/{ratingId}")
+    public ResponseEntity<Void> deleteRating(@PathVariable Long ratingId) {
+        ratingService.deleteRating(ratingId);
+        return ResponseEntity.noContent().build();
+    }
 }

@@ -42,6 +42,7 @@ public class Professor {
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
     
-    
+    public University getUniversity() { return university; }
+    public void setUniversity(University university) { this.university = university; }
 
 }

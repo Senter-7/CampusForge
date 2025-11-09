@@ -8,6 +8,7 @@ public class RegisterDto {
     private String skills;
     private String interests;
     private String role;       // ✅ Add this
+    private Long universityId; // ✅ Add university
 
     // Getters and Setters
     public String getUsername() { return username; }
@@ -30,4 +31,7 @@ public class RegisterDto {
 
     public String getRole() { return role; }          // ✅
     public void setRole(String role) { this.role = role; }
+
+    public Long getUniversityId() { return universityId; }
+    public void setUniversityId(Long universityId) { this.universityId = universityId; }
 }

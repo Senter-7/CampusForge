@@ -20,7 +20,6 @@ public class Course {
     @JoinColumn(name = "university_id")
     private University university;
     
-    @Lob
     private String description;
 
     public Course(){};
@@ -38,6 +37,9 @@ public class Course {
 
     public Professor getProfessor() { return professor; }
     public void setProfessor(Professor professor) { this.professor = professor; }
+
+    public University getUniversity() { return university; }
+    public void setUniversity(University university) { this.university = university; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }

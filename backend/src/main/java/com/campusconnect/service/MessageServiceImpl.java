@@ -1,5 +1,6 @@
 package com.campusconnect.service;
 
+import com.campusconnect.controller.WebSocketMessageController;
 import com.campusconnect.dto.MessageDto;
 import com.campusconnect.entity.Message;
 import com.campusconnect.entity.Project;
@@ -23,6 +24,7 @@ public class MessageServiceImpl implements MessageService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final MessageMapper messageMapper;
+    private final WebSocketMessageController webSocketController;
 
 
     @Override
@@ -43,7 +45,12 @@ public class MessageServiceImpl implements MessageService {
                 .build();
 
         messageRepository.save(msg);
-        return messageMapper.toDto(msg);
+        MessageDto messageDto = messageMapper.toDto(msg);
+        
+        // Broadcast message via WebSocket to all subscribers of this project
+        webSocketController.broadcastMessage(messageDto);
+        
+        return messageDto;
 
     }
 

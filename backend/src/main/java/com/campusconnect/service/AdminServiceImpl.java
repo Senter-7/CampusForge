@@ -71,5 +71,12 @@ public class AdminServiceImpl implements AdminService {
         return new UserDto(user);
     }
 
+    @Override
+    public void deleteProject(Long projectId) {
+        if (!projectRepository.existsById(projectId)) {
+            throw new RuntimeException("Project not found");
+        }
+        projectRepository.deleteById(projectId);
+    }
 
 }

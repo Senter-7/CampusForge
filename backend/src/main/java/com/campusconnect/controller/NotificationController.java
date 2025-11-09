@@ -1,9 +1,12 @@
 package com.campusconnect.controller;
 
 import com.campusconnect.dto.NotificationDto;
+import com.campusconnect.security.UserPrincipal;
 import com.campusconnect.service.NotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,6 +28,14 @@ public class NotificationController {
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<NotificationDto>> getUserNotifications(@PathVariable Long userId) {
         return ResponseEntity.ok(notificationService.getNotificationsByUser(userId));
+    }
+
+    // ✅ Get current user's notifications
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/me")
+    public ResponseEntity<List<NotificationDto>> getCurrentUserNotifications(
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        return ResponseEntity.ok(notificationService.getNotificationsByUser(currentUser.getId()));
     }
 
     // 🔹 Mark a notification as read

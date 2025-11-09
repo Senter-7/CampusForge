@@ -38,7 +38,11 @@ public class ProjectController {
 
     // ✅ Get all projects (public)
     @GetMapping
-    public ResponseEntity<List<ProjectDto>> getAllProjects() {
+    public ResponseEntity<List<ProjectDto>> getAllProjects(
+            @RequestParam(required = false) String search) {
+        if (search != null && !search.trim().isEmpty()) {
+            return ResponseEntity.ok(projectService.searchProjects(search.trim()));
+        }
         return ResponseEntity.ok(projectService.getAllProjects());
     }
 

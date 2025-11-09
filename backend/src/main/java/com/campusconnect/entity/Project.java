@@ -14,7 +14,7 @@ public class Project {
     @Column(nullable = false, length = 150)
     private String title;
 
-    @Lob
+    
     @Column(nullable = false)
     private String description;
 
@@ -22,12 +22,18 @@ public class Project {
     @JoinColumn(name = "creator_id")
     private User creator;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = ProjectStatusConverter.class)
     @Column(nullable = false)
     private Status status = Status.OPEN;
 
     @Column(nullable = false)
     private Timestamp createdAt = new Timestamp(System.currentTimeMillis());
+
+    @Column(name = "members_required")
+    private Integer membersRequired = 5;
+
+    @Column(name = "deadline")
+    private java.sql.Date deadline;
 
     @ManyToMany
     @JoinTable(
@@ -66,4 +72,8 @@ public class Project {
     public void setSkills(Set<Skill> skills) { this.skills = skills; }
     public Set<User> getMembers() { return members; }
     public void setMembers(Set<User> members) { this.members = members; }
+    public Integer getMembersRequired() { return membersRequired; }
+    public void setMembersRequired(Integer membersRequired) { this.membersRequired = membersRequired; }
+    public java.sql.Date getDeadline() { return deadline; }
+    public void setDeadline(java.sql.Date deadline) { this.deadline = deadline; }
 }

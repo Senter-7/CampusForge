@@ -18,6 +18,16 @@ public class UserDto {
     private Set<InterestDto> interests;
     private Long universityId;
     private String universityName;
+    // Teammate profile fields
+    private String major;
+    private String year;
+    private String availability;
+    private String hoursPerWeek;
+    private Timestamp lastSeen;
+    // Computed fields for teammate display
+    private Integer projectCount;
+    private Double rating;
+    private String location; // Derived from university
 
     // Getters and Setters
     public Long getUserId() { return userId; }
@@ -42,6 +52,30 @@ public class UserDto {
     public void setUniversityId(Long universityId) { this.universityId = universityId; }
     public String getUniversityName() { return universityName; }
     public void setUniversityName(String universityName) { this.universityName = universityName; }
+
+    public String getMajor() { return major; }
+    public void setMajor(String major) { this.major = major; }
+
+    public String getYear() { return year; }
+    public void setYear(String year) { this.year = year; }
+
+    public String getAvailability() { return availability; }
+    public void setAvailability(String availability) { this.availability = availability; }
+
+    public String getHoursPerWeek() { return hoursPerWeek; }
+    public void setHoursPerWeek(String hoursPerWeek) { this.hoursPerWeek = hoursPerWeek; }
+
+    public Timestamp getLastSeen() { return lastSeen; }
+    public void setLastSeen(Timestamp lastSeen) { this.lastSeen = lastSeen; }
+
+    public Integer getProjectCount() { return projectCount; }
+    public void setProjectCount(Integer projectCount) { this.projectCount = projectCount; }
+
+    public Double getRating() { return rating; }
+    public void setRating(Double rating) { this.rating = rating; }
+
+    public String getLocation() { return location; }
+    public void setLocation(String location) { this.location = location; }
 
     public UserDto() {}
 
@@ -68,6 +102,30 @@ public class UserDto {
             this.interests = user.getInterests().stream()
                 .map(interest -> new InterestDto(interest.getInterestId(), interest.getName()))
                 .collect(Collectors.toSet());
+        }
+
+        // Teammate profile fields
+        this.major = user.getMajor();
+        this.year = user.getYear() != null ? user.getYear().name() : null;
+        this.availability = user.getAvailability() != null ? user.getAvailability().name() : null;
+        this.hoursPerWeek = user.getHoursPerWeek();
+        this.lastSeen = user.getLastSeen();
+
+        // Location from university
+        if (user.getUniversity() != null) {
+            StringBuilder locationBuilder = new StringBuilder();
+            if (user.getUniversity().getCity() != null) {
+                locationBuilder.append(user.getUniversity().getCity());
+            }
+            if (user.getUniversity().getState() != null) {
+                if (locationBuilder.length() > 0) locationBuilder.append(", ");
+                locationBuilder.append(user.getUniversity().getState());
+            }
+            if (user.getUniversity().getCountry() != null) {
+                if (locationBuilder.length() > 0) locationBuilder.append(", ");
+                locationBuilder.append(user.getUniversity().getCountry());
+            }
+            this.location = locationBuilder.length() > 0 ? locationBuilder.toString() : null;
         }
     }
 }

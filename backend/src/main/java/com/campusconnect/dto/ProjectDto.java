@@ -1,5 +1,6 @@
 package com.campusconnect.dto;
 
+import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.Set;
 
@@ -12,6 +13,8 @@ public class ProjectDto {
     private Long creatorId;
     private String status;
     private Timestamp createdAt;
+    private Integer membersRequired;
+    private Date deadline;
     private Set<SkillDto> skills;
     private Set<Long> memberIds;
 
@@ -31,5 +34,8 @@ public class ProjectDto {
     public void setSkills(Set<SkillDto> skills) { this.skills = skills; }
     public Set<Long> getMemberIds() { return memberIds; }
     public void setMemberIds(Set<Long> memberIds) { this.memberIds = memberIds; }
-    
+    public Integer getMembersRequired() { return membersRequired; }
+    public void setMembersRequired(Integer membersRequired) { this.membersRequired = membersRequired; }
+    public Date getDeadline() { return deadline; }
+    public void setDeadline(Date deadline) { this.deadline = deadline; }
 }

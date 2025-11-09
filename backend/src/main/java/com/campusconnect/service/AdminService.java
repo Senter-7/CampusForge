@@ -14,5 +14,7 @@ public interface AdminService {
 
     Map<String, Object> getDashboardStats();
 
-    UserDto getUserById(Long id);  
+    UserDto getUserById(Long id);
+    
+    void deleteProject(Long projectId);
 }

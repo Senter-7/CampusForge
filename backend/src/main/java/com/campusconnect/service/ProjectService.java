@@ -11,4 +11,5 @@ public interface ProjectService {
     void deleteProject(Long id, Long studentId);
     void joinProject(Long projectId, Long studentId);
     List<ProjectDto> getProjectsByStudent(Long studentId);
+    List<ProjectDto> searchProjects(String query);
 }

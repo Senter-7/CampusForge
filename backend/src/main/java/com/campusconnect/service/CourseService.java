@@ -8,4 +8,5 @@ public interface CourseService {
     List<CourseDto> getAllCourses();
     CourseDto getCourseById(Long id);
     List<CourseDto> getCoursesByProfessor(Long professorId);
+    List<CourseDto> searchCourses(String query);
 }

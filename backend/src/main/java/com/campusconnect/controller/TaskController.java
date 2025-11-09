@@ -2,10 +2,12 @@ package com.campusconnect.controller;
 
 import com.campusconnect.dto.TaskRequestDTO;
 import com.campusconnect.dto.TaskResponseDTO;
+import com.campusconnect.security.UserPrincipal;
 import com.campusconnect.service.TaskService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,8 +23,8 @@ public class TaskController {
     @PostMapping("/create")
     @PreAuthorize("@projectSecurity.isProjectMember(authentication, #dto.projectId)")
     public ResponseEntity<TaskResponseDTO> createTask(@RequestBody TaskRequestDTO dto,
-                                                      @RequestParam Long createdById) {
-        return ResponseEntity.ok(taskService.createTask(dto, createdById));
+                                                      @AuthenticationPrincipal UserPrincipal currentUser) {
+        return ResponseEntity.ok(taskService.createTask(dto, currentUser.getId()));
     }
 
     // ✅ List tasks — members only

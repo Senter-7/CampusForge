@@ -13,3 +13,8 @@ backend/mvnw.cmd
 *.log
 .DS_Store
 .env
+.gitignore
+migration_add_project_fields.sql
+.gitignore
+backend/src/main/resources/application.properties
+migration_add_teammate_fields.sql

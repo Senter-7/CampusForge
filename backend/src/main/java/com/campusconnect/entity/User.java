@@ -56,6 +56,32 @@ public class User {
     @JoinColumn(name = "university_id")
     private University university;
 
+    // Teammate profile fields
+    @Column(length = 100)
+    private String major;
+
+    @Enumerated(EnumType.STRING)
+    @Column(columnDefinition = "ENUM('Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate')")
+    private Year year;
+
+    @Enumerated(EnumType.STRING)
+    @Column(columnDefinition = "ENUM('Available', 'Limited', 'Busy')")
+    private Availability availability = Availability.Available;
+
+    @Column(name = "hours_per_week", length = 20)
+    private String hoursPerWeek;
+
+    @Column(name = "last_seen")
+    private Timestamp lastSeen;
+
+    public enum Year {
+        Freshman, Sophomore, Junior, Senior, Graduate
+    }
+
+    public enum Availability {
+        Available, Limited, Busy
+    }
+
     // Getters and Setters
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
@@ -79,5 +105,20 @@ public class User {
     public void setInterests(Set<Interest> interests) { this.interests = interests; }
     public University getUniversity() { return university; }
     public void setUniversity(University university) { this.university = university; }
+
+    public String getMajor() { return major; }
+    public void setMajor(String major) { this.major = major; }
+
+    public Year getYear() { return year; }
+    public void setYear(Year year) { this.year = year; }
+
+    public Availability getAvailability() { return availability; }
+    public void setAvailability(Availability availability) { this.availability = availability; }
+
+    public String getHoursPerWeek() { return hoursPerWeek; }
+    public void setHoursPerWeek(String hoursPerWeek) { this.hoursPerWeek = hoursPerWeek; }
+
+    public Timestamp getLastSeen() { return lastSeen; }
+    public void setLastSeen(Timestamp lastSeen) { this.lastSeen = lastSeen; }
     
 }

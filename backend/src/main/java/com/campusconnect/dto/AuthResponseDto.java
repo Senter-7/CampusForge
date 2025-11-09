@@ -4,6 +4,7 @@ public class AuthResponseDto {
     private String token;
     private String role;
     private String message;
+    private Long userId;
 
     // Constructors
     public AuthResponseDto() {}
@@ -11,6 +12,12 @@ public class AuthResponseDto {
         this.token = token;
         this.role = role;
         this.message = message;
+    }
+    public AuthResponseDto(String token, String role, String message, Long userId) {
+        this.token = token;
+        this.role = role;
+        this.message = message;
+        this.userId = userId;
     }
 
     // Getters and Setters
@@ -20,4 +27,6 @@ public class AuthResponseDto {
     public void setRole(String role) { this.role = role; }
     public String getMessage() { return message; }
     public void setMessage(String message) { this.message = message; }
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
 }

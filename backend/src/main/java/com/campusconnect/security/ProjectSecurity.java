@@ -46,18 +46,37 @@ public class ProjectSecurity {
      * Allowed for project leader, mentor, or the task creator/assignee.
      */
     public boolean canModifyTask(Authentication authentication, Long taskId) {
+        if (authentication == null || authentication.getName() == null) {
+            return false;
+        }
+        
         String email = authentication.getName();
 
-        return taskRepository.findById(taskId)
+        // Use eager fetch to avoid LazyInitializationException
+        return taskRepository.findByIdWithRelations(taskId)
                 .map(task -> {
-                    Long projectId = task.getProject().getProjectId();
-
-                    // Leader or mentor can always modify
-                    if (isProjectOwner(authentication, projectId)) return true;
-
-                    // Otherwise, allow if user created or is assigned to this task
-                    return (task.getCreatedBy() != null && email.equals(task.getCreatedBy().getEmail()))
-                            || (task.getAssignedTo() != null && email.equals(task.getAssignedTo().getEmail()));
+                    try {
+                        // Check if user is project member first (any project member should be able to view/modify tasks in their projects)
+                        Long projectId = task.getProject().getProjectId();
+                        
+                        // Leader or mentor can always modify
+                        if (isProjectOwner(authentication, projectId)) {
+                            return true;
+                        }
+                        
+                        // Check if user is a project member (all members should be able to modify tasks)
+                        if (isProjectMember(authentication, projectId)) {
+                            // For collaborative projects, allow any project member to modify tasks
+                            // This enables team members to update task status, mark as complete, etc.
+                            return true;
+                        }
+                        
+                        return false;
+                    } catch (Exception e) {
+                        // Log error and deny access on exception
+                        System.err.println("Error checking task modification permission: " + e.getMessage());
+                        return false;
+                    }
                 })
                 .orElse(false);
     }

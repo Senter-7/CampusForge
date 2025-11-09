@@ -46,4 +46,11 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getUserById(id));
     }
 
+    // ✅ Delete project (admin only)
+    @DeleteMapping("/projects/{id}")
+    public ResponseEntity<String> deleteProject(@PathVariable Long id) {
+        adminService.deleteProject(id);
+        return ResponseEntity.ok("Project deleted successfully");
+    }
+
 }
