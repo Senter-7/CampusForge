@@ -9,6 +9,7 @@ COPY backend ./backend
 WORKDIR /app/backend
 
 # Fix CRLF issues on Windows
+RUN sed -i 's/\r$//' ./mvnw
 RUN chmod +x ./mvnw
 
 # Build Spring Boot jar
