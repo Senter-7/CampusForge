@@ -19,4 +19,4 @@ migration_add_project_fields.sql
 backend/src/main/resources/application.properties
 migration_add_teammate_fields.sql
 
-backend/src/test
+backend/src/test/
