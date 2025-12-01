@@ -5,9 +5,8 @@ frontend/node_modules/
 
 backend/.env
 backend/.idea/
-backend/.mvn/
-backend/mvnw
-backend/mvnw.cmd
+
+
 
 # ===== Common =====
 *.log
