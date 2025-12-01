@@ -31,8 +31,8 @@ export function useWebSocket(options?: UseWebSocketOptions) {
       clientRef.current = null;
     }
 
-    // Create SockJS connection
-    const socket = new SockJS('http://localhost:8080/ws');
+   const WS_URL = import.meta.env.VITE_WS_URL || "http://localhost:8080/ws";
+    const socket = new SockJS(WS_URL);
     const client = new Client({
       webSocketFactory: () => socket,
       reconnectDelay: 5000,

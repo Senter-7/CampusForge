@@ -29,3 +29,51 @@ While most of the inheritance is fine, it also inherits unwanted elements like `
 To prevent this, the project POM contains empty overrides for these elements.
 If you manually switch to a different parent and actually want the inheritance, you need to remove those overrides.
 
+
+# Getting Started with the backend
+
+### config
+
+
+Enables Web Security:
+    @EnableWebSecurity activates Spring Security.
+
+SecurityFilterChain Bean:
+
+    Disables CSRF protection (good for APIs).
+    Enables CORS using the custom configuration.
+    Allows all requests to /api/auth/** (register, login) without authentication.
+    Requires authentication for all other endpoints.
+    Sets session management to stateless (no server-side sessions; uses JWT).
+CORS Configuration:
+    Allows requests from any origin (*).
+    Permits common HTTP methods and headers.
+    Supports credentials.
+Password Encoder Bean:
+    Uses BCrypt for secure password hashing.
+### controller
+Handles HTTP requests and responses. Defines API endpoints and maps them to service methods.
+
+### dto
+Used to transfer data between layers (especially between controller and service). Helps shape request/response payloads and hides internal entity details.
+
+### entity
+Represents a table in the database. Defines the structure of your data and is managed by JPA/Hibernate.
+
+### repository
+Provides CRUD operations for entities. Interfaces with the database using Spring Data JPA.
+
+### service
+Contains business logic. Called by controllers to process requests, interact with repositories, and return results.
+
+### util
+Helper classes for common tasks (e.g., JWT generation, string manipulation). Not tied to business logic or data access.
+
+### application.properties
+env file that stores the global variables being used
+### BackendApplication.java
+### target
+### mvnw
+### mvnw.cmd
+### pom.xml
+

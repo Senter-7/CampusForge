@@ -52,6 +52,21 @@ interface ProjectFormValues {
   deadline: string;
 }
 
+interface TaskDto {
+  taskId?: number;
+  projectId?: number;
+  title?: string;
+  description?: string;
+  status?: string;
+  priority?: string;
+  dueDate?: string;
+  createdById?: number;
+  assignedToId?: number;
+  assignedToName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 interface ProjectDisplay {
   id: string;
   title: string;
@@ -79,7 +94,8 @@ export function MyProjects({ onNavigate }: MyProjectsProps) {
     if (onNavigate) {
       onNavigate('project-detail', projectId);
     } else {
-      navigate(`/projects/${projectId}`);
+      // Pass state to indicate we're coming from MyProjects page
+      navigate(`/projects/${projectId}`, { state: { from: 'myprojects' } });
     }
   };
 
@@ -96,6 +112,41 @@ export function MyProjects({ onNavigate }: MyProjectsProps) {
   useEffect(() => {
     fetchMyProjects();
   }, []);
+
+  // Fetch tasks for a project and calculate progress
+  const fetchTasksForProject = async (projectId: number): Promise<{ total: number; completed: number; progress: number }> => {
+    try {
+      const tasksRes = await axiosClient.get<TaskDto[]>(`/tasks/project/${projectId}`);
+      const tasks = tasksRes.data || [];
+      const total = tasks.length;
+      const completed = tasks.filter(task => task.status === 'DONE').length;
+      const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+      return { total, completed, progress };
+    } catch (error: any) {
+      // If user is not a member or tasks can't be fetched, return 0 progress
+      console.warn(`Failed to fetch tasks for project ${projectId}:`, error);
+      return { total: 0, completed: 0, progress: 0 };
+    }
+  };
+
+  // Format relative time
+  const formatRelativeTime = (dateString: string | undefined): string => {
+    if (!dateString) return 'Recently';
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 0) return 'Today';
+      if (diffDays === 1) return '1 day ago';
+      if (diffDays < 7) return `${diffDays} days ago`;
+      if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+      return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch {
+      return 'Recently';
+    }
+  };
 
   const fetchMyProjects = async () => {
     if (!userId) {
@@ -114,11 +165,19 @@ export function MyProjects({ onNavigate }: MyProjectsProps) {
         project => project.creatorId?.toString() === userId
       );
 
-      // Transform and categorize projects
+      // Transform and categorize projects with actual task data
       const active: ProjectDisplay[] = [];
       const completed: ProjectDisplay[] = [];
 
-      myProjects.forEach((project, index) => {
+      // Fetch tasks for all projects in parallel
+      const projectsWithTasks = await Promise.all(
+        myProjects.map(async (project) => {
+          const taskData = await fetchTasksForProject(project.projectId!);
+          return { project, taskData };
+        })
+      );
+
+      projectsWithTasks.forEach(({ project, taskData }, index) => {
         // Format deadline if it exists
         let deadlineStr = 'No deadline set';
         if (project.deadline) {
@@ -128,29 +187,55 @@ export function MyProjects({ onNavigate }: MyProjectsProps) {
             deadlineStr = project.deadline;
           }
         }
+
+        // Determine if project should be in completed tab
+        // Completed if: backend status is COMPLETED OR (all tasks are completed and has at least one task)
+        const isCompleted = project.status === 'COMPLETED' || 
+          (taskData.total > 0 && taskData.completed === taskData.total);
+        
+        // Determine status (at-risk if deadline is past and not completed)
+        let status: 'on-track' | 'at-risk' = 'on-track';
+        if (!isCompleted && project.deadline) {
+          try {
+            const deadline = new Date(project.deadline);
+            const now = new Date();
+            if (deadline < now && taskData.progress < 100) {
+              status = 'at-risk';
+            }
+          } catch (e) {
+            // Invalid date, keep default
+          }
+        }
+
+        // Get last update time from project's createdAt or most recent task
+        const lastUpdate = project.createdAt ? formatRelativeTime(project.createdAt) : 'Recently';
         
         const transformed: ProjectDisplay = {
           id: String(project.projectId || index),
           title: project.title || 'Untitled Project',
           role: 'Project Lead', // User is the creator
-          progress: project.status === 'COMPLETED' ? 100 : Math.floor(Math.random() * 80) + 10, // Fallback: random progress
-          tasks: { 
-            total: Math.floor(Math.random() * 20) + 5, 
-            completed: Math.floor(Math.random() * 15) 
-          }, // Fallback: random task counts
+          progress: taskData.progress,
+          tasks: {
+            total: taskData.total,
+            completed: taskData.completed
+          },
           members: project.memberIds?.length || 1,
           deadline: deadlineStr,
-          status: project.status === 'COMPLETED' ? 'on-track' : (Math.random() > 0.7 ? 'at-risk' : 'on-track'), // Fallback: random status
-          lastUpdate: 'recently', // Fallback
+          status,
+          lastUpdate,
         };
 
-        if (project.status === 'COMPLETED') {
+        if (isCompleted) {
+          // Use the most recent task completion date if available, otherwise use current date
+          const completedDate = taskData.completed > 0 && project.createdAt
+            ? new Date(project.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            : new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          
           completed.push({
             ...transformed,
-            completedDate: project.createdAt 
-              ? new Date(project.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-              : 'Recently',
-            rating: 5, // Fallback
+            progress: 100, // Ensure progress shows 100% for completed projects
+            completedDate,
+            rating: 5, // Fallback - could be fetched from ratings later
           });
         } else {
           active.push(transformed);
@@ -422,16 +507,7 @@ export function MyProjects({ onNavigate }: MyProjectsProps) {
                     <p className="text-muted-foreground mb-4">
                       You haven't created any projects yet. Start by creating your first project!
                     </p>
-                    <Button onClick={() => {
-                      if (onNavigate) {
-                        onNavigate('projects');
-                      } else {
-                        navigate('/projects');
-                      }
-                    }}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create Project
-                    </Button>
+                   
                   </div>
                 </Card>
               ) : (

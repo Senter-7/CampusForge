@@ -149,7 +149,8 @@ export function Projects({ onNavigate }: ProjectsProps) {
     if (onNavigate) {
       onNavigate('project-detail', projectId);
     } else {
-      navigate(`/projects/${projectId}`);
+      // Pass state to indicate we're coming from Projects page
+      navigate(`/projects/${projectId}`, { state: { from: 'projects' } });
     }
   };
 

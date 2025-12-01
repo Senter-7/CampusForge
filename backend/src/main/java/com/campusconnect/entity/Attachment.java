@@ -23,7 +23,7 @@ public class Attachment {
     private String fileName;
 
     @Lob
-    @Column(columnDefinition = "MEDIUMBLOB")
+    @Basic(fetch = FetchType.LAZY)    
     private byte[] fileData;
 
     @Column(length = 512)

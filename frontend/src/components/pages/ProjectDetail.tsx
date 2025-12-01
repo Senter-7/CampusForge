@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import axiosClient from '../../api/axiosClient';
 import { getCurrentUserId } from '../../utils/auth';
@@ -88,7 +88,11 @@ interface TaskFormValues {
 export function ProjectDetail({ projectId: propProjectId, onNavigate }: ProjectDetailProps) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const projectId = propProjectId || id;
+  
+  // Determine source page from location state or default to 'projects'
+  const sourcePage = (location.state as any)?.from || 'projects';
   
   const [loading, setLoading] = useState(true);
   const [project, setProject] = useState<ProjectDto | null>(null);
@@ -106,7 +110,8 @@ export function ProjectDetail({ projectId: propProjectId, onNavigate }: ProjectD
       onNavigate(page, navId);
     } else {
       if (page === 'projects') {
-        navigate('/projects');
+        // Navigate back to the source page (Projects or MyProjects)
+        navigate(sourcePage === 'myprojects' ? '/myprojects' : '/projects');
       } else if (page === 'messages') {
         navigate(`/messages?projectId=${navId || projectId}`);
       } else {
@@ -246,6 +251,14 @@ export function ProjectDetail({ projectId: propProjectId, onNavigate }: ProjectD
     return members.some(m => m.userId?.toString() === userId);
   };
 
+  // Determine if task creation should be shown
+  // Only show for project members when coming from MyProjects
+  const shouldShowTaskCreation = sourcePage === 'myprojects' && isProjectMember();
+  
+  // Determine if task modification should be allowed
+  // Only allow when coming from MyProjects
+  const canModifyTasks = sourcePage === 'myprojects';
+
   // Check if user can modify task (creator, assignee, leader, or mentor)
   const canModifyTask = (task: TaskDto): boolean => {
     if (!userId) return false;
@@ -326,18 +339,19 @@ export function ProjectDetail({ projectId: propProjectId, onNavigate }: ProjectD
   }
 
   if (!project) {
+    const backButtonText = sourcePage === 'myprojects' ? 'Back to My Projects' : 'Back to Projects';
     return (
       <div className="space-y-6">
         <Button variant="ghost" onClick={() => handleNavigate('projects')} className="rounded-lg">
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Projects
+          {backButtonText}
         </Button>
         <Card className="p-12 rounded-xl shadow-sm border-border text-center">
           <h3 className="mb-2">Project not found</h3>
           <p className="text-muted-foreground mb-4">
             The project you're looking for doesn't exist or has been removed.
           </p>
-          <Button onClick={() => handleNavigate('projects')}>Back to Projects</Button>
+          <Button onClick={() => handleNavigate('projects')}>{backButtonText}</Button>
         </Card>
       </div>
     );
@@ -353,13 +367,16 @@ export function ProjectDetail({ projectId: propProjectId, onNavigate }: ProjectD
   const todoTasks = tasks.filter(t => t.status === 'TODO');
   const inProgressTasks = tasks.filter(t => t.status === 'IN_PROGRESS');
   const doneTasks = tasks.filter(t => t.status === 'DONE');
+  
+  // Determine back button text based on source page
+  const backButtonText = sourcePage === 'myprojects' ? 'Back to My Projects' : 'Back to Projects';
 
   return (
     <div className="space-y-6">
       {/* Back Button */}
       <Button variant="ghost" onClick={() => handleNavigate('projects')} className="rounded-lg">
         <ArrowLeft className="mr-2 h-4 w-4" />
-        Back to Projects
+        {backButtonText}
       </Button>
 
       {/* Header */}
@@ -549,8 +566,8 @@ export function ProjectDetail({ projectId: propProjectId, onNavigate }: ProjectD
         </TabsContent>
 
         <TabsContent value="tasks" className="space-y-6">
-          {/* Create Task Button - Only show for project members */}
-          {isProjectMember() && (
+          {/* Create Task Button - Only show for project members when coming from MyProjects */}
+          {shouldShowTaskCreation && (
             <div className="flex justify-end">
               <Dialog open={createTaskDialogOpen} onOpenChange={setCreateTaskDialogOpen}>
                 <DialogTrigger asChild>
@@ -749,7 +766,7 @@ export function ProjectDetail({ projectId: propProjectId, onNavigate }: ProjectD
                                 <span>Assigned to: {members.find(m => m.userId === task.assignedToId)?.userName || 'Unknown'}</span>
                               )}
                             </div>
-                            {isProjectMember() && canModifyTask(task) && (
+                            {canModifyTasks && isProjectMember() && canModifyTask(task) && (
                               <div className="flex gap-2 mt-2">
                                 <Button
                                   size="sm"
@@ -813,7 +830,7 @@ export function ProjectDetail({ projectId: propProjectId, onNavigate }: ProjectD
                                 <span>Assigned to: {members.find(m => m.userId === task.assignedToId)?.userName || 'Unknown'}</span>
                               )}
                             </div>
-                            {isProjectMember() && canModifyTask(task) && (
+                            {canModifyTasks && isProjectMember() && canModifyTask(task) && (
                               <div className="flex gap-2 mt-2">
                                 <Button
                                   size="sm"
@@ -879,7 +896,7 @@ export function ProjectDetail({ projectId: propProjectId, onNavigate }: ProjectD
                                 Completed {formatRelativeTime(task.updatedAt)}
                               </p>
                             )}
-                            {isProjectMember() && canModifyTask(task) && (
+                            {canModifyTasks && isProjectMember() && canModifyTask(task) && (
                               <div className="flex gap-2 mt-2">
                                 <Button
                                   size="sm"

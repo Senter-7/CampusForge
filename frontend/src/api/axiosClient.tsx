@@ -1,8 +1,11 @@
 // src/api/axiosClient.ts
 import axios from "axios";
 
+const BASE_URL =
+  import.meta.env.VITE_BACKEND_URL || "http://localhost:8080/api";
+
 const axiosClient = axios.create({
-  baseURL: "http://localhost:8080/api",
+  baseURL: BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
