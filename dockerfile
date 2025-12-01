@@ -3,7 +3,8 @@ FROM maven:3.9.6-eclipse-temurin-17 AS build
 
 WORKDIR /app
 
-COPY backend/ ./backend
+COPY ./backend ./backend
+
 WORKDIR /app/backend
 
 # Fix Windows CRLF issue
