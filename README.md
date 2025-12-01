@@ -186,12 +186,6 @@ This is a portfolio project. Feel free to fork and extend it for your own purpos
 
 This project is for educational and portfolio purposes.
 
-## 👤 Author
-
-[Your Name]
-- GitHub: [Your GitHub]
-- LinkedIn: [Your LinkedIn]
-- Email: [Your Email]
 
 ## 🙏 Acknowledgments
 
