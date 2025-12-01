@@ -8,12 +8,9 @@ COPY backend ./backend
 
 WORKDIR /app/backend
 
-# Fix CRLF issues on Windows
-RUN sed -i 's/\r$//' mvnw
-RUN chmod +x mvnw
-
 # Build Spring Boot jar
-RUN ./mvnw -DskipTests package
+RUN ls
+RUN mvnw -DskipTests package
 
 
 # ---------- STAGE 2: Run ----------
