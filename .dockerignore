@@ -1,9 +1,9 @@
-target
-frontend
-doc
-node_modules
+target/
+frontend/
+doc/
+node_modules/
 .git
 .gitignore
 README.md
 .vscode
-dockerfile
+
