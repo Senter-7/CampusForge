@@ -9,8 +9,8 @@ COPY backend ./backend
 WORKDIR /app/backend
 
 # Build Spring Boot jar
-RUN ls
-RUN mvnw -DskipTests package
+
+RUN ./mvnw -DskipTests package
 
 
 # ---------- STAGE 2: Run ----------
