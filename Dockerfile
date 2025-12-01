@@ -8,8 +8,10 @@ COPY backend ./backend
 
 WORKDIR /app/backend
 
-# Build Spring Boot jar
+# Fix CRLF issues on Windows
+RUN chmod +x ./mvnw
 
+# Build Spring Boot jar
 RUN ./mvnw -DskipTests package
 
 
