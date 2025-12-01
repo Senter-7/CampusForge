@@ -8,20 +8,14 @@ COPY backend ./backend
 
 WORKDIR /app/backend
 
-# Fix CRLF issues on Windows
-RUN sed -i 's/\r$//' mvnw
-RUN chmod +x ./mvnw
-
-# Build Spring Boot jar
-RUN ./mvnw -DskipTests package
-
+# Build Spring Boot jar using Maven (NOT mvnw)
+RUN mvn -DskipTests package
 
 # ---------- STAGE 2: Run ----------
 FROM eclipse-temurin:17-jdk
 
 WORKDIR /app
 
-# Copy built jar
 COPY --from=build /app/backend/target/*.jar app.jar
 
 EXPOSE 8080
