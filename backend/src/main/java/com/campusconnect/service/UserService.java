@@ -94,6 +94,7 @@ public class UserService {
     }
 
     // ✅ Get user by ID (accepts Long)
+    @Transactional(readOnly = true)
     public UserDto getUser(Long id) {
         User user = userRepository.findById(id) // convert if repository uses Long
                 .orElseThrow(() -> new RuntimeException("User not found"));
