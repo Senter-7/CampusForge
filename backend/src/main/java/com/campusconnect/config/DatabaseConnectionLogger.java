@@ -32,8 +32,14 @@ public class DatabaseConnectionLogger {
         logger.info("MYSQLPORT: {}", env.getOrDefault("MYSQLPORT", "NOT SET"));
         logger.info("MYSQLDATABASE: {}", env.getOrDefault("MYSQLDATABASE", "NOT SET"));
         logger.info("MYSQLUSER: {}", env.getOrDefault("MYSQLUSER", "NOT SET"));
-        logger.info("MYSQLPASSWORD: {}", env.getOrDefault("MYSQLPASSWORD", "NOT SET") != null && !env.get("MYSQLPASSWORD").isEmpty() ? "SET (hidden)" : "NOT SET");
-        logger.info("DATABASE_URL: {}", env.getOrDefault("DATABASE_URL", "NOT SET") != null && !env.get("DATABASE_URL").isEmpty() ? "SET (hidden)" : "NOT SET");
+        
+        // Safe null check for password
+        String mysqlPassword = env.get("MYSQLPASSWORD");
+        logger.info("MYSQLPASSWORD: {}", (mysqlPassword != null && !mysqlPassword.isEmpty()) ? "SET (hidden)" : "NOT SET");
+        
+        // Safe null check for DATABASE_URL
+        String databaseUrl = env.get("DATABASE_URL");
+        logger.info("DATABASE_URL: {}", (databaseUrl != null && !databaseUrl.isEmpty()) ? "SET (hidden)" : "NOT SET");
         
         // Log resolved properties
         String activeProfile = environment.getProperty("spring.profiles.active", "default");
