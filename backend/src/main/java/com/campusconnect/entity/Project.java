@@ -14,8 +14,7 @@ public class Project {
     @Column(nullable = false, length = 150)
     private String title;
 
-    
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String description;
 
     @ManyToOne
