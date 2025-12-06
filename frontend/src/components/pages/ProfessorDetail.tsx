@@ -356,11 +356,11 @@ export function ProfessorDetail({ onNavigate }: ProfessorDetailProps) {
                 onClick={() => onNavigate('course-detail', String(course.courseId))}
               >
                 <h4 className="mb-2">{course.name}</h4>
-                {course.description && (
+                {/* {course.description && (
                   <p className="text-sm text-muted-foreground line-clamp-2">
                     {course.description}
                   </p>
-                )}
+                )} */}
               </Card>
             ))}
           </div>

@@ -912,13 +912,13 @@ export function Professors({ onNavigate }: ProfessorsProps) {
             <Card 
               key={professor.professorId} 
               className="p-6 rounded-xl shadow-sm border-border hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => {
-                if (onNavigate) {
-                  onNavigate('professor-detail', String(professor.professorId));
-                } else {
-                  navigate(`/explore/professors/${professor.professorId}`);
-                }
-              }}
+              // onClick={() => {
+              //   if (onNavigate) {
+              //     onNavigate('professor-detail', String(professor.professorId));
+              //   } else {
+              //     navigate(`/explore/professors/${professor.professorId}`);
+              //   }
+              // }}
             >
             <div className="space-y-4">
               {/* Header */}
