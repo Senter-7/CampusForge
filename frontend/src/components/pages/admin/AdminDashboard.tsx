@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axiosClient from '../../../api/axiosClient';
 import { Card } from '../../ui/card';
 import { Loader2 } from 'lucide-react';
@@ -16,6 +17,7 @@ interface DashboardStats {
 }
 
 export function AdminDashboard() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats | null>(null);
 
@@ -107,21 +109,27 @@ export function AdminDashboard() {
       <Card className="p-6 rounded-xl shadow-sm border-border">
         <h3 className="mb-4">Quick Actions</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
+          <div 
+            className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+            onClick={() => navigate('/admin/users')}
+          >
             <Users className="h-5 w-5 text-primary mb-2" />
             <p className="font-medium">Manage Users</p>
             <p className="text-sm text-muted-foreground">View and manage all users</p>
           </div>
-          <div className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
+          <div 
+            className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+            onClick={() => navigate('/admin/projects')}
+          >
             <FolderKanban className="h-5 w-5 text-primary mb-2" />
             <p className="font-medium">Manage Projects</p>
             <p className="text-sm text-muted-foreground">View and manage all projects</p>
           </div>
-          <div className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
+          {/* <div className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
             <TrendingUp className="h-5 w-5 text-primary mb-2" />
             <p className="font-medium">View Analytics</p>
             <p className="text-sm text-muted-foreground">Platform statistics and reports</p>
-          </div>
+          </div> */}
         </div>
       </Card>
     </div>
