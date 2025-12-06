@@ -1,12 +1,16 @@
 package com.campusconnect.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDateTime;
 
 public class NotificationDto {
     private Long notificationId;
     private Long userId;
     private String message;
+    
+    @JsonProperty("isRead")
     private boolean isRead;
+    
     private LocalDateTime createdAt;
 
     // Getters and Setters
@@ -19,6 +23,7 @@ public class NotificationDto {
     public String getMessage() { return message; }
     public void setMessage(String message) { this.message = message; }
 
+    @JsonProperty("isRead")
     public boolean isRead() { return isRead; }
     public void setRead(boolean read) { isRead = read; }
 

@@ -23,7 +23,13 @@ public class CollaborationRequest {
     @JoinColumn(name = "student_id", nullable = false,
             foreignKey = @ForeignKey(name = "fk_collab_student"))
     @OnDelete(action = OnDeleteAction.CASCADE)
-    private User student;
+    private User student; // Student who sent the request (wants to join)
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_collab_owner"))
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    private User owner; // Project owner who receives the request
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -47,6 +53,9 @@ public class CollaborationRequest {
 
     public User getStudent() { return student; }
     public void setStudent(User student) { this.student = student; }
+
+    public User getOwner() { return owner; }
+    public void setOwner(User owner) { this.owner = owner; }
 
     public Status getStatus() { return status; }
     public void setStatus(Status status) { this.status = status; }

@@ -65,6 +65,17 @@ interface TaskDto {
   assignedToName?: string;
   createdAt?: string;
   updatedAt?: string;
+  projectTitle?: string;
+}
+
+interface CollaborationRequestDto {
+  requestId?: number;
+  projectId?: number;
+  projectTitle?: string;
+  studentId?: number;
+  studentName?: string;
+  status?: string;
+  createdAt?: string;
 }
 
 interface ProjectDisplay {
@@ -88,6 +99,10 @@ export function MyProjects({ onNavigate }: MyProjectsProps) {
   const [completedProjects, setCompletedProjects] = useState<ProjectDisplay[]>([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [pendingInvites, setPendingInvites] = useState<CollaborationRequestDto[]>([]);
+  const [upcomingTasks, setUpcomingTasks] = useState<TaskDto[]>([]);
+  const [tasksDue, setTasksDue] = useState<TaskDto[]>([]);
+  const [loadingInvites, setLoadingInvites] = useState(false);
   const userId = getCurrentUserId();
 
   const handleProjectClick = (projectId: string) => {
@@ -111,7 +126,233 @@ export function MyProjects({ onNavigate }: MyProjectsProps) {
 
   useEffect(() => {
     fetchMyProjects();
-  }, []);
+    fetchPendingInvites();
+    fetchUpcomingTasks();
+    fetchTasksDue();
+  }, [userId]);
+
+  // Fetch collaboration requests where user is project owner
+  const fetchPendingInvites = async () => {
+    if (!userId) {
+      console.log('[Pending Invites] No userId, skipping fetch');
+      return;
+    }
+    setLoadingInvites(true);
+    try {
+      // Convert userId to number for proper comparison (userId from localStorage is string)
+      const userIdNum = Number(userId);
+      console.log(`[Pending Invites] Fetching pending invites for owner ${userIdNum} (userId: ${userId})`);
+      
+      // Use the new efficient endpoint to get all pending requests for this owner
+      const res = await axiosClient.get<CollaborationRequestDto[]>(
+        `/collaboration/owner/${userIdNum}/pending`
+      );
+      
+      const requests = res.data || [];
+      console.log(`[Pending Invites] API returned ${requests.length} pending invites:`, requests);
+      
+      // Filter to ensure we only show PENDING status (backend should already do this, but double-check)
+      const pendingRequests = requests.filter(req => req.status === 'PENDING');
+      console.log(`[Pending Invites] Filtered to ${pendingRequests.length} PENDING requests`);
+      
+      setPendingInvites(pendingRequests);
+    } catch (error: any) {
+      console.error('[Pending Invites] Failed to fetch pending invites:', error);
+      console.error('[Pending Invites] Error details:', {
+        status: error?.response?.status,
+        message: error?.response?.data?.message || error?.message,
+        data: error?.response?.data
+      });
+      // Don't show error toast if it's just 404 (no requests found) or 400 (bad request)
+      if (error?.response?.status !== 404 && error?.response?.status !== 400) {
+        toast.error(error?.response?.data?.message || 'Failed to load pending invites');
+      }
+      setPendingInvites([]);
+    } finally {
+      setLoadingInvites(false);
+    }
+  };
+
+  // Fetch upcoming tasks (assigned to user, not completed, due in next 7 days)
+  const fetchUpcomingTasks = async () => {
+    if (!userId) {
+      setUpcomingTasks([]);
+      return;
+    }
+    try {
+      // Get all projects user is a member of (not just creator)
+      const projectsRes = await axiosClient.get<ProjectDto[]>('/projects/student/me');
+      const projects = projectsRes.data || [];
+      
+      // Fetch tasks from all projects
+      const allTasks: TaskDto[] = [];
+      for (const project of projects) {
+        if (!project.projectId) continue;
+        try {
+          const tasksRes = await axiosClient.get<TaskDto[]>(`/tasks/project/${project.projectId}`);
+          const projectTasks = tasksRes.data || [];
+          // Filter tasks assigned to current user and add project title
+          projectTasks.forEach((task) => {
+            if (task.assignedToId?.toString() === userId) {
+              allTasks.push({ ...task, projectTitle: project.title || 'Untitled Project' });
+            }
+          });
+        } catch (error) {
+          console.warn(`Failed to fetch tasks for project ${project.projectId}:`, error);
+        }
+      }
+      
+      const tasks = allTasks;
+      
+      console.log(`[Upcoming Tasks] Fetched ${tasks.length} tasks for user ${userId}`);
+      
+      // Set time to start of day for accurate date comparison
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      const sevenDaysFromNow = new Date(now);
+      sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+      
+      console.log(`[Upcoming Tasks] Filtering tasks with due dates between ${now.toISOString()} and ${sevenDaysFromNow.toISOString()}`);
+      
+      const upcoming = tasks
+        .filter(task => {
+          // Check if task is not done
+          if (task.status === 'DONE') {
+            console.log(`[Upcoming Tasks] Task ${task.taskId} filtered out: status is DONE`);
+            return false;
+          }
+          
+          // Check if task has a due date
+          if (!task.dueDate) {
+            console.log(`[Upcoming Tasks] Task ${task.taskId} filtered out: no due date`);
+            return false;
+          }
+          
+          try {
+            // Parse the date (could be ISO string or date string)
+            const taskDueDate = new Date(task.dueDate);
+            taskDueDate.setHours(0, 0, 0, 0);
+            
+            // Check if due date is between now and 7 days from now
+            const isInRange = taskDueDate >= now && taskDueDate <= sevenDaysFromNow;
+            console.log(`[Upcoming Tasks] Task ${task.taskId} (${task.title}): dueDate=${task.dueDate}, parsed=${taskDueDate.toISOString()}, inRange=${isInRange}`);
+            return isInRange;
+          } catch (e) {
+            console.warn(`[Upcoming Tasks] Invalid date format for task ${task.taskId}:`, task.dueDate, e);
+            return false;
+          }
+        })
+        .sort((a, b) => {
+          if (!a.dueDate || !b.dueDate) return 0;
+          try {
+            return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+          } catch {
+            return 0;
+          }
+        })
+        .slice(0, 5); // Limit to 5 most upcoming
+
+      console.log(`[Upcoming Tasks] Final result: ${upcoming.length} upcoming tasks`);
+      setUpcomingTasks(upcoming);
+    } catch (error: any) {
+      console.error('Failed to fetch upcoming tasks:', error);
+      // Show error to user only if it's not a 404 (no tasks is fine)
+      if (error?.response?.status !== 404) {
+        console.error('Error details:', error?.response?.data || error.message);
+      }
+      setUpcomingTasks([]);
+    }
+  };
+
+  // Fetch tasks that are due soon (overdue or due within 3 days)
+  const fetchTasksDue = async () => {
+    if (!userId) {
+      setTasksDue([]);
+      return;
+    }
+    try {
+      // Get all projects user is a member of (not just creator)
+      const projectsRes = await axiosClient.get<ProjectDto[]>('/projects/student/me');
+      const projects = projectsRes.data || [];
+      
+      // Fetch tasks from all projects
+      const allTasks: TaskDto[] = [];
+      for (const project of projects) {
+        if (!project.projectId) continue;
+        try {
+          const tasksRes = await axiosClient.get<TaskDto[]>(`/tasks/project/${project.projectId}`);
+          const projectTasks = tasksRes.data || [];
+          // Filter tasks assigned to current user and add project title
+          projectTasks.forEach((task) => {
+            if (task.assignedToId?.toString() === userId) {
+              allTasks.push({ ...task, projectTitle: project.title || 'Untitled Project' });
+            }
+          });
+        } catch (error) {
+          console.warn(`Failed to fetch tasks for project ${project.projectId}:`, error);
+        }
+      }
+      
+      const tasks = allTasks;
+      
+      console.log(`[Tasks Due] Fetched ${tasks.length} tasks for user ${userId}`);
+      
+      // Set time to start of day for accurate date comparison
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      const threeDaysFromNow = new Date(now);
+      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+      
+      console.log(`[Tasks Due] Filtering tasks with due dates <= ${threeDaysFromNow.toISOString()}`);
+      
+      const due = tasks
+        .filter(task => {
+          // Check if task is not done
+          if (task.status === 'DONE') {
+            console.log(`[Tasks Due] Task ${task.taskId} filtered out: status is DONE`);
+            return false;
+          }
+          
+          // Check if task has a due date
+          if (!task.dueDate) {
+            console.log(`[Tasks Due] Task ${task.taskId} filtered out: no due date`);
+            return false;
+          }
+          
+          try {
+            // Parse the date (could be ISO string or date string)
+            const taskDueDate = new Date(task.dueDate);
+            taskDueDate.setHours(0, 0, 0, 0);
+            
+            // Check if due date is within 3 days (including overdue)
+            const isDue = taskDueDate <= threeDaysFromNow;
+            console.log(`[Tasks Due] Task ${task.taskId} (${task.title}): dueDate=${task.dueDate}, parsed=${taskDueDate.toISOString()}, isDue=${isDue}`);
+            return isDue;
+          } catch (e) {
+            console.warn(`[Tasks Due] Invalid date format for task ${task.taskId}:`, task.dueDate, e);
+            return false;
+          }
+        })
+        .sort((a, b) => {
+          if (!a.dueDate || !b.dueDate) return 0;
+          try {
+            return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+          } catch {
+            return 0;
+          }
+        });
+
+      console.log(`[Tasks Due] Final result: ${due.length} tasks due`);
+      setTasksDue(due);
+    } catch (error: any) {
+      console.error('Failed to fetch tasks due:', error);
+      // Show error to user only if it's not a 404 (no tasks is fine)
+      if (error?.response?.status !== 404) {
+        console.error('Error details:', error?.response?.data || error.message);
+      }
+      setTasksDue([]);
+    }
+  };
 
   // Fetch tasks for a project and calculate progress
   const fetchTasksForProject = async (projectId: number): Promise<{ total: number; completed: number; progress: number }> => {
@@ -290,8 +531,9 @@ export function MyProjects({ onNavigate }: MyProjectsProps) {
         toast.success('Project created successfully!');
         setCreateDialogOpen(false);
         reset();
-        // Refresh projects list
+        // Refresh projects list and invites
         await fetchMyProjects();
+        await fetchPendingInvites();
       } else {
         toast.error('Project created but response was invalid.');
       }
@@ -303,20 +545,42 @@ export function MyProjects({ onNavigate }: MyProjectsProps) {
     }
   };
 
-  // Static data for pending invites and tasks (can be fetched from backend later)
-  const pendingInvites: Array<{
-    project: string;
-    from: string;
-    role: string;
-    received: string;
-  }> = [];
+  // Handle accepting or declining collaboration requests
+  const handleRespondToInvite = async (requestId: number, action: 'approve' | 'reject') => {
+    if (!userId) return;
+    try {
+      await axiosClient.put(`/collaboration/${requestId}/respond`, null, {
+        params: { ownerId: userId, action }
+      });
+      
+      toast.success(action === 'approve' ? 'Invite accepted!' : 'Invite declined');
+      await fetchPendingInvites();
+      await fetchMyProjects(); // Refresh projects to update member count
+    } catch (error: any) {
+      console.error(`Failed to ${action} invite:`, error);
+      toast.error(error?.response?.data?.message || `Failed to ${action} invite`);
+    }
+  };
 
-  const upcomingTasks: Array<{
-    project: string;
-    task: string;
-    priority: string;
-    due: string;
-  }> = [];
+  // Format date for display
+  const formatDate = (dateString: string | undefined): string => {
+    if (!dateString) return 'No date';
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = date.getTime() - now.getTime();
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      
+      if (diffDays < 0) return `${Math.abs(diffDays)} days overdue`;
+      if (diffDays === 0) return 'Due today';
+      if (diffDays === 1) return 'Due tomorrow';
+      if (diffDays < 7) return `Due in ${diffDays} days`;
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } catch {
+      return dateString;
+    }
+  };
+
 
   if (loading) {
     return (
@@ -483,7 +747,7 @@ export function MyProjects({ onNavigate }: MyProjectsProps) {
         </Card>
         <Card className="p-4 rounded-xl shadow-sm border-border">
           <p className="text-muted-foreground text-sm mb-1">Tasks Due</p>
-          <p className="text-2xl text-destructive">{upcomingTasks.length}</p>
+          <p className="text-2xl text-destructive">{tasksDue.length}</p>
         </Card>
       </div>
 
@@ -671,21 +935,41 @@ export function MyProjects({ onNavigate }: MyProjectsProps) {
           {/* Pending Invites */}
           <Card className="p-6 rounded-xl shadow-sm border-border">
             <h3 className="mb-4">Pending Invites ({pendingInvites.length})</h3>
+            {loadingInvites ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : pendingInvites.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No pending invites
+              </p>
+            ) : (
             <div className="space-y-4">
               {pendingInvites.map((invite, index) => (
-                <div key={index} className="space-y-3">
+                  <div key={invite.requestId || index} className="space-y-3">
                   <div>
-                    <p className="text-sm mb-1">{invite.project}</p>
+                      <p className="text-sm font-medium mb-1">{invite.projectTitle || 'Untitled Project'}</p>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Request from <span className="font-medium">{invite.studentName || 'Unknown'}</span>
+                      </p>
                     <p className="text-xs text-muted-foreground">
-                      From {invite.from} • {invite.received}
+                        Received {formatRelativeTime(invite.createdAt)}
                     </p>
-                    <Badge variant="outline" className="rounded-lg text-xs mt-2">
-                      {invite.role}
-                    </Badge>
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" className="flex-1 rounded-lg">Accept</Button>
-                    <Button variant="outline" size="sm" className="flex-1 rounded-lg">
+                      <Button 
+                        size="sm" 
+                        className="flex-1 rounded-lg"
+                        onClick={() => handleRespondToInvite(invite.requestId!, 'approve')}
+                      >
+                        Accept
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1 rounded-lg"
+                        onClick={() => handleRespondToInvite(invite.requestId!, 'reject')}
+                      >
                       Decline
                     </Button>
                   </div>
@@ -695,28 +979,109 @@ export function MyProjects({ onNavigate }: MyProjectsProps) {
                 </div>
               ))}
             </div>
+            )}
           </Card>
 
           {/* Upcoming Tasks */}
           <Card className="p-6 rounded-xl shadow-sm border-border">
             <h3 className="mb-4">Upcoming Tasks</h3>
+            {upcomingTasks.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No upcoming tasks
+              </p>
+            ) : (
             <div className="space-y-3">
-              {upcomingTasks.map((task, index) => (
-                <div key={index} className="flex items-start gap-3">
-                  <div className={`h-2 w-2 rounded-full mt-2 ${
-                    task.priority === 'high' ? 'bg-destructive' :
-                    task.priority === 'medium' ? 'bg-chart-5' : 'bg-chart-4'
+                {upcomingTasks.map((task) => (
+                  <div 
+                    key={task.taskId} 
+                    className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => {
+                      if (task.projectId) {
+                        if (onNavigate) {
+                          onNavigate('project-detail', String(task.projectId));
+                        } else {
+                          navigate(`/projects/${task.projectId}`);
+                        }
+                      }
+                    }}
+                  >
+                    <div className={`h-2 w-2 rounded-full mt-2 flex-shrink-0 ${
+                      task.priority === 'HIGH' ? 'bg-destructive' :
+                      task.priority === 'MEDIUM' ? 'bg-chart-5' : 'bg-chart-4'
                   }`} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm truncate">{task.task}</p>
-                    <p className="text-xs text-muted-foreground">{task.project}</p>
+                      <p className="text-sm font-medium truncate">{task.title || 'Untitled Task'}</p>
+                      {task.description && (
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                          {task.description}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {task.projectTitle || 'Untitled Project'}
+                      </p>
                   </div>
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">
-                    {task.due}
+                    <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
+                      {formatDate(task.dueDate)}
                   </span>
                 </div>
               ))}
             </div>
+            )}
+          </Card>
+
+          {/* Tasks Due */}
+          <Card className="p-6 rounded-xl shadow-sm border-border">
+            <h3 className="mb-4">Tasks Due ({tasksDue.length})</h3>
+            {tasksDue.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No tasks due soon
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {tasksDue.map((task) => {
+                  const isOverdue = task.dueDate && new Date(task.dueDate) < new Date();
+                  return (
+                    <div 
+                      key={task.taskId} 
+                      className={`flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors ${
+                        isOverdue ? 'bg-destructive/5 border border-destructive/20' : ''
+                      }`}
+                      onClick={() => {
+                        if (task.projectId) {
+                          if (onNavigate) {
+                            onNavigate('project-detail', String(task.projectId));
+                          } else {
+                            navigate(`/projects/${task.projectId}`);
+                          }
+                        }
+                      }}
+                    >
+                      <div className={`h-2 w-2 rounded-full mt-2 flex-shrink-0 ${
+                        isOverdue ? 'bg-destructive' :
+                        task.priority === 'HIGH' ? 'bg-destructive' :
+                        task.priority === 'MEDIUM' ? 'bg-chart-5' : 'bg-chart-4'
+                      }`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{task.title || 'Untitled Task'}</p>
+                        {task.description && (
+                          <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                            {task.description}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {task.projectTitle || 'Untitled Project'}
+                        </p>
+        </div>
+                      <span className={`text-xs whitespace-nowrap flex-shrink-0 ${
+                        isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground'
+                      }`}>
+                        {formatDate(task.dueDate)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </Card>
         </div>
       </div>

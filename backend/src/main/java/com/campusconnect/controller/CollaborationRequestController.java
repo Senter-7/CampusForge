@@ -50,4 +50,11 @@ public class CollaborationRequestController {
     public ResponseEntity<List<CollaborationRequestDto>> getRequestsByStudent(@PathVariable Long studentId) {
         return ResponseEntity.ok(collaborationRequestService.getRequestsByStudent(studentId));
     }
+
+    // ✅ Get all pending requests received by a project owner
+    @GetMapping("/owner/{ownerId}/pending")
+    @PreAuthorize("hasRole('STUDENT') or hasRole('ADMIN')")
+    public ResponseEntity<List<CollaborationRequestDto>> getPendingRequestsByOwner(@PathVariable Long ownerId) {
+        return ResponseEntity.ok(collaborationRequestService.getPendingRequestsByOwner(ownerId));
+    }
 }

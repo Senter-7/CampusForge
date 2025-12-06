@@ -1,6 +1,7 @@
 package com.campusconnect.security;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import javax.crypto.SecretKey;
@@ -26,19 +27,48 @@ public class JwtUtil {
     }
 
     public String extractUsername(String token) {
-        return parseClaims(token).getSubject();
+        try {
+            return parseClaims(token).getSubject();
+        } catch (ExpiredJwtException e) {
+            // Token expired, but we can still extract username from expired token
+            return e.getClaims().getSubject();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public String extractRole(String token) {
-        return parseClaims(token).get("role", String.class);
+        try {
+            return parseClaims(token).get("role", String.class);
+        } catch (ExpiredJwtException e) {
+            // Token expired, but we can still extract role from expired token
+            return e.getClaims().get("role", String.class);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public boolean validateToken(String token) {
         try {
             parseClaims(token);
             return true;
-        } catch (Exception e) {
+        } catch (ExpiredJwtException e) {
+            // Token is expired
             return false;
+        } catch (Exception e) {
+            // Token is invalid for other reasons
+            return false;
+        }
+    }
+
+    public boolean isTokenExpired(String token) {
+        try {
+            parseClaims(token);
+            return false;
+        } catch (ExpiredJwtException e) {
+            return true;
+        } catch (Exception e) {
+            return false; // If we can't parse, consider it not expired but invalid
         }
     }
 

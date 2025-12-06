@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -47,13 +48,16 @@ interface Conversation {
 }
 
 export function Messages({ onNavigate }: MessagesProps) {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [messageInput, setMessageInput] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const subscriptionRef = useRef<any>(null);
   const userId = getCurrentUserId();
 
@@ -123,10 +127,98 @@ export function Messages({ onNavigate }: MessagesProps) {
     }
   }, [isConnected, subscribe, handleNewMessage]);
 
+  // Fetch messages for a specific project
+  const fetchMessagesForProject = useCallback(async (projectId: number) => {
+    setLoadingMessages(true);
+    try {
+      console.log(`[Messages] Fetching messages for project ${projectId}`);
+      const messagesRes = await axiosClient.get<MessageDto[]>(`/messages/${projectId}`);
+      const messages = messagesRes.data || [];
+      console.log(`[Messages] Loaded ${messages.length} messages for project ${projectId}`, messages);
+
+      // Update conversation with fetched messages (create conversation if it doesn't exist)
+      setConversations(prev => {
+        const existingConv = prev.find(conv => conv.projectId === projectId);
+        if (existingConv) {
+          // Update existing conversation
+          const lastMessage = messages.length > 0 ? messages[messages.length - 1] : undefined;
+          return prev.map(conv => {
+            if (conv.projectId === projectId) {
+              return {
+                ...conv,
+                messages: messages, // Replace all messages with fetched ones
+                lastMessage: lastMessage?.content,
+                lastMessageTime: lastMessage?.createdAt,
+              };
+            }
+            return conv;
+          });
+        } else {
+          // Conversation doesn't exist - fetch project details and create it
+          console.log(`[Messages] Conversation not found for project ${projectId}, fetching project details...`);
+          axiosClient.get<ProjectDto>(`/projects/${projectId}`).then(projectRes => {
+            const lastMessage = messages.length > 0 ? messages[messages.length - 1] : undefined;
+            setConversations(prevConv => [...prevConv, {
+              projectId: projectId,
+              title: projectRes.data?.title || 'Untitled Project',
+              lastMessage: lastMessage?.content,
+              lastMessageTime: lastMessage?.createdAt,
+              unread: 0,
+              messages: messages,
+            }]);
+          }).catch(err => {
+            console.error('Failed to fetch project details:', err);
+            // Add conversation anyway with default title
+            const lastMessage = messages.length > 0 ? messages[messages.length - 1] : undefined;
+            setConversations(prevConv => [...prevConv, {
+              projectId: projectId,
+              title: 'Untitled Project',
+              lastMessage: lastMessage?.content,
+              lastMessageTime: lastMessage?.createdAt,
+              unread: 0,
+              messages: messages,
+            }]);
+          });
+          return prev; // Return previous state while fetching project details
+        }
+      });
+    } catch (error: any) {
+      console.error(`[Messages] Failed to fetch messages for project ${projectId}:`, error);
+      console.error(`[Messages] Error status: ${error?.response?.status}, message: ${error?.response?.data?.message || error?.message}`);
+      // Show error only if it's not a permission issue
+      if (error?.response?.status === 403 || error?.response?.status === 401) {
+        console.warn(`[Messages] Permission denied for project ${projectId} - user may not be a member`);
+      } else {
+        toast.error(`Failed to load messages: ${error?.response?.data?.message || error?.message}`);
+      }
+    } finally {
+      setLoadingMessages(false);
+    }
+  }, []);
+
   // Fetch user's projects
   useEffect(() => {
     fetchProjects();
   }, []);
+
+  // Handle URL query parameter for projectId
+  useEffect(() => {
+    const projectIdParam = searchParams.get('projectId');
+    if (projectIdParam) {
+      const projectIdNum = Number(projectIdParam);
+      if (!isNaN(projectIdNum) && projectIdNum !== selectedProjectId) {
+        setSelectedProjectId(projectIdNum);
+      }
+    }
+  }, [searchParams, selectedProjectId]);
+
+  // Fetch messages when project is selected
+  useEffect(() => {
+    if (selectedProjectId) {
+      console.log(`[Messages] Project ${selectedProjectId} selected, fetching messages...`);
+      fetchMessagesForProject(selectedProjectId);
+    }
+  }, [selectedProjectId, fetchMessagesForProject]);
 
   // Subscribe to WebSocket when project is selected
   useEffect(() => {
@@ -148,10 +240,77 @@ export function Messages({ onNavigate }: MessagesProps) {
     };
   }, [selectedProjectId, isConnected, subscribeToProject]);
 
+  // Monitor container dimensions for debugging
+  useEffect(() => {
+    if (!messagesContainerRef.current) return;
+    
+    const container = messagesContainerRef.current;
+    const checkDimensions = () => {
+      try {
+        const rect = container.getBoundingClientRect();
+        const styles = window.getComputedStyle(container);
+        console.log('[Scroll Debug] Container dimensions:', {
+          scrollHeight: container.scrollHeight,
+          clientHeight: container.clientHeight,
+          offsetHeight: container.offsetHeight,
+          scrollTop: container.scrollTop,
+          scrollTopMax: container.scrollHeight - container.clientHeight,
+          canScroll: container.scrollHeight > container.clientHeight,
+          boundingRect: {
+            width: rect.width,
+            height: rect.height,
+            top: rect.top,
+            left: rect.left,
+          },
+          computedStyles: {
+            height: styles.height,
+            maxHeight: styles.maxHeight,
+            minHeight: styles.minHeight,
+            overflow: styles.overflow,
+            overflowY: styles.overflowY,
+            overflowX: styles.overflowX,
+            display: styles.display,
+            flex: styles.flex,
+          },
+          parentHeight: container.parentElement?.clientHeight,
+          parentComputedHeight: container.parentElement ? window.getComputedStyle(container.parentElement).height : null,
+        });
+      } catch (error) {
+        console.error('[Scroll Debug] Error checking dimensions:', error);
+      }
+    };
+    
+    // Check immediately
+    checkDimensions();
+    
+    // Check after a delay to see if dimensions change
+    const timeout1 = setTimeout(checkDimensions, 100);
+    const timeout2 = setTimeout(checkDimensions, 500);
+    const timeout3 = setTimeout(checkDimensions, 1000);
+    
+    return () => {
+      clearTimeout(timeout1);
+      clearTimeout(timeout2);
+      clearTimeout(timeout3);
+    };
+  }, [conversations, selectedProjectId, loadingMessages]);
+
   // Scroll to bottom when messages change
   useEffect(() => {
+    try {
+      const currentConversation = conversations.find(conv => conv.projectId === selectedProjectId);
+      console.log('[Scroll Debug] Messages changed, attempting to scroll:', {
+        selectedProjectId,
+        conversationMessagesCount: currentConversation?.messages?.length || 0,
+        containerRefExists: !!messagesContainerRef.current,
+        endRefExists: !!messagesEndRef.current,
+        loadingMessages,
+      });
     scrollToBottom();
-  }, [conversations, selectedProjectId]);
+    } catch (error) {
+      console.error('[Scroll Debug] Error in scroll effect:', error);
+    }
+  }, [conversations, selectedProjectId, loadingMessages]);
 
   const fetchProjects = async () => {
     if (!userId) {
@@ -165,33 +324,52 @@ export function Messages({ onNavigate }: MessagesProps) {
       const res = await axiosClient.get('/projects/student/me');
       const projects: ProjectDto[] = res.data || [];
 
-      // Initialize conversations for each project
-      const initialConversations: Conversation[] = await Promise.all(
-        projects.map(async (project) => {
-          // Fetch messages for each project
-          let messages: MessageDto[] = [];
-          try {
-            const messagesRes = await axiosClient.get(`/messages/${project.projectId}`);
-            messages = messagesRes.data || [];
-          } catch (error) {
-            console.error(`Failed to fetch messages for project ${project.projectId}:`, error);
-          }
-
-          const lastMessage = messages.length > 0 ? messages[messages.length - 1] : undefined;
-
+      // Initialize conversations for each project (without loading messages yet)
+      const initialConversations: Conversation[] = projects.map((project) => {
           return {
             projectId: project.projectId!,
             title: project.title || 'Untitled Project',
-            lastMessage: lastMessage?.content,
-            lastMessageTime: lastMessage?.createdAt,
+          lastMessage: undefined,
+          lastMessageTime: undefined,
             unread: 0,
-            messages: messages || [],
+          messages: [], // Will be loaded when project is selected
           };
-        })
-      );
+      });
 
       setConversations(initialConversations);
-      if (initialConversations.length > 0 && !selectedProjectId) {
+      
+      // Handle project selection from URL param or select first project
+      const projectIdParam = searchParams.get('projectId');
+      if (projectIdParam) {
+        const projectIdNum = Number(projectIdParam);
+        if (!isNaN(projectIdNum)) {
+          // Check if project exists in user's projects
+          const projectExists = initialConversations.some(conv => conv.projectId === projectIdNum);
+          if (projectExists) {
+            setSelectedProjectId(projectIdNum);
+          } else {
+            // Project might exist but user not a member - add it anyway
+            setSelectedProjectId(projectIdNum);
+            // Add to conversations if not already there
+            const existing = initialConversations.find(conv => conv.projectId === projectIdNum);
+            if (!existing) {
+              // Fetch project details to get title
+              axiosClient.get<ProjectDto>(`/projects/${projectIdNum}`).then(projectRes => {
+                setConversations(prev => [...prev, {
+                  projectId: projectIdNum,
+                  title: projectRes.data?.title || 'Untitled Project',
+                  lastMessage: undefined,
+                  lastMessageTime: undefined,
+                  unread: 0,
+                  messages: [],
+                }]);
+              }).catch(err => {
+                console.error('Failed to fetch project details:', err);
+              });
+            }
+          }
+        }
+      } else if (initialConversations.length > 0 && !selectedProjectId) {
         setSelectedProjectId(initialConversations[0].projectId);
       }
     } catch (error) {
@@ -223,7 +401,52 @@ export function Messages({ onNavigate }: MessagesProps) {
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    try {
+      // Use setTimeout to ensure DOM has updated
+      setTimeout(() => {
+        try {
+          if (messagesContainerRef.current) {
+            const container = messagesContainerRef.current;
+            console.log('[Scroll Debug] Container found:', {
+              scrollHeight: container.scrollHeight,
+              clientHeight: container.clientHeight,
+              scrollTop: container.scrollTop,
+              canScroll: container.scrollHeight > container.clientHeight,
+              className: container.className,
+              computedStyle: {
+                height: window.getComputedStyle(container).height,
+                maxHeight: window.getComputedStyle(container).maxHeight,
+                overflow: window.getComputedStyle(container).overflow,
+                overflowY: window.getComputedStyle(container).overflowY,
+              }
+            });
+
+            if (container.scrollHeight > container.clientHeight) {
+              container.scrollTo({
+                top: container.scrollHeight,
+                behavior: 'smooth'
+              });
+              console.log('[Scroll Debug] Scrolled to bottom');
+            } else {
+              console.warn('[Scroll Debug] Cannot scroll - content height is not greater than container height');
+            }
+          } else {
+            console.warn('[Scroll Debug] messagesContainerRef.current is null');
+            // Fallback to scrollIntoView
+            if (messagesEndRef.current) {
+              console.log('[Scroll Debug] Using fallback scrollIntoView');
+              messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+            } else {
+              console.warn('[Scroll Debug] messagesEndRef.current is also null');
+            }
+          }
+        } catch (error) {
+          console.error('[Scroll Debug] Error in scrollToBottom:', error);
+        }
+      }, 100);
+    } catch (error) {
+      console.error('[Scroll Debug] Error setting up scroll timeout:', error);
+    }
   };
 
   const getAvatarInitials = (name: string) => {
@@ -272,6 +495,8 @@ export function Messages({ onNavigate }: MessagesProps) {
   const selectedConversation = conversations.find(
     conv => conv.projectId === selectedProjectId
   );
+  
+  // Define this before useEffect hooks that use it
 
   if (loading) {
     return (
@@ -298,7 +523,7 @@ export function Messages({ onNavigate }: MessagesProps) {
 
       {/* Messages Container */}
       <Card className="rounded-xl shadow-sm border-border overflow-hidden">
-        <div className="grid lg:grid-cols-12 h-[calc(100vh-16rem)]">
+        <div className="grid lg:grid-cols-12 h-[calc(100vh-16rem)] min-h-0">
           {/* Conversations List */}
           <div className="lg:col-span-4 border-r border-border flex flex-col">
             {/* Search */}
@@ -327,6 +552,8 @@ export function Messages({ onNavigate }: MessagesProps) {
                       key={conversation.projectId}
                       onClick={() => {
                         setSelectedProjectId(conversation.projectId);
+                        // Update URL query param
+                        setSearchParams({ projectId: conversation.projectId.toString() });
                         // Mark as read when selected
                         setConversations(prev => prev.map(conv =>
                           conv.projectId === conversation.projectId
@@ -378,11 +605,11 @@ export function Messages({ onNavigate }: MessagesProps) {
           </div>
 
           {/* Chat Area */}
-          <div className="lg:col-span-8 flex flex-col">
+          <div className="lg:col-span-8 flex flex-col h-full min-h-0 overflow-hidden">
             {selectedConversation ? (
               <>
             {/* Chat Header */}
-            <div className="p-4 border-b border-border flex items-center justify-between">
+            <div className="p-4 border-b border-border flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-3">
                 <Avatar className="h-10 w-10">
                       <AvatarFallback className="bg-primary/10 text-primary">
@@ -397,19 +624,49 @@ export function Messages({ onNavigate }: MessagesProps) {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="rounded-lg">
+                {/* <Button variant="ghost" size="icon" className="rounded-lg">
                   <Info className="h-5 w-5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="rounded-lg">
+                </Button> */}
+                {/* <Button variant="ghost" size="icon" className="rounded-lg">
                   <MoreVertical className="h-5 w-5" />
-                </Button>
+                </Button> */}
               </div>
             </div>
 
             {/* Messages */}
-            <ScrollArea className="flex-1 p-4">
+            <div 
+              ref={(el) => {
+                messagesContainerRef.current = el;
+                if (el) {
+                  // Use requestAnimationFrame to check after render
+                  requestAnimationFrame(() => {
+                    const rect = el.getBoundingClientRect();
+                    const styles = window.getComputedStyle(el);
+                    console.log('[Scroll Debug] Container ref set:', {
+                      scrollHeight: el.scrollHeight,
+                      clientHeight: el.clientHeight,
+                      offsetHeight: el.offsetHeight,
+                      boundingHeight: rect.height,
+                      canScroll: el.scrollHeight > el.clientHeight,
+                      computedHeight: styles.height,
+                      computedMaxHeight: styles.maxHeight,
+                      computedOverflowY: styles.overflowY,
+                      parentHeight: el.parentElement?.clientHeight,
+                      parentComputedHeight: el.parentElement ? window.getComputedStyle(el.parentElement).height : null,
+                    });
+                  });
+                }
+              }}
+              className="flex-1 min-h-0 overflow-y-auto p-4"
+              style={{ height: 0 }} // Force flex item to respect height constraint
+            >
               <div className="space-y-4">
-                    {selectedConversation.messages.length === 0 ? (
+                    {loadingMessages ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        <span className="ml-2 text-sm text-muted-foreground">Loading messages...</span>
+                      </div>
+                    ) : selectedConversation.messages.length === 0 ? (
                       <div className="text-center text-muted-foreground py-8">
                         <p>No messages yet. Start the conversation!</p>
                       </div>
@@ -422,7 +679,7 @@ export function Messages({ onNavigate }: MessagesProps) {
                             className={`flex gap-3 ${isOwn ? 'flex-row-reverse' : ''}`}
                           >
                             {!isOwn && (
-                      <Avatar className="h-8 w-8">
+                      <Avatar className="h-8 w-8 flex-shrink-0">
                         <AvatarFallback className="bg-primary/10 text-primary text-xs">
                                   {getAvatarInitials(message.senderName || 'U')}
                         </AvatarFallback>
@@ -441,7 +698,7 @@ export function Messages({ onNavigate }: MessagesProps) {
                             : 'bg-muted'
                         }`}
                       >
-                        <p className="text-sm">{message.content}</p>
+                        <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
                       </div>
                               <p className="text-xs text-muted-foreground mt-1">
                                 {formatMessageTime(message.createdAt)}
@@ -453,14 +710,14 @@ export function Messages({ onNavigate }: MessagesProps) {
                     )}
                     <div ref={messagesEndRef} />
               </div>
-            </ScrollArea>
+            </div>
 
             {/* Message Input */}
-            <div className="p-4 border-t border-border">
+            <div className="p-4 border-t border-border flex-shrink-0">
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="rounded-lg">
+                {/* <Button variant="ghost" size="icon" className="rounded-lg">
                   <Paperclip className="h-5 w-5" />
-                </Button>
+                </Button> */}
                 <Input
                   placeholder="Type a message..."
                   value={messageInput}

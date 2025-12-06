@@ -8,7 +8,7 @@ import { Progress } from '../ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import {
   MapPin, Mail, Globe, Github, Linkedin,
-  Award, Star, FolderKanban, Users, Edit2, Upload
+  Award, Star, FolderKanban, Users, MessageSquare, Handshake
 } from 'lucide-react';
 import { useCurrentUser, User } from '../../hooks/useCurrentUser';
 import { getCurrentUserId, getUserRole, isTokenValid } from "../../utils/auth";
@@ -26,18 +26,74 @@ interface ProjectWithRole {
   status: string;
 }
 
+interface UserStats {
+  projects: number;
+  tasks: number;
+  messages: number;
+  collaborations: number;
+  rating?: number;
+}
+
 export function Profile({ onNavigate }: ProfileProps) {
   const { data: user, isLoading, refetch } = useCurrentUser();
   const [projects, setProjects] = useState<ProjectWithRole[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [stats, setStats] = useState<UserStats>({
+    projects: 0,
+    tasks: 0,
+    messages: 0,
+    collaborations: 0,
+  });
+  const [statsLoading, setStatsLoading] = useState(true);
 
   const userId = getCurrentUserId();
   const role = getUserRole();
   const valid = isTokenValid();
 
   console.log("UserId:", userId, "Role:", role, "Token valid?", valid);
+
+  // Fetch user statistics
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!userId) return;
+      
+      try {
+        setStatsLoading(true);
+        
+        // Use dashboard endpoint which has all the data we need
+        const dashboardRes = await axiosClient.get('/dashboard/me');
+        const dashboardData = dashboardRes.data || {};
+
+        // Extract counts from dashboard data
+        const projectCount = (dashboardData.projects || []).length;
+        const taskCount = (dashboardData.assignedTasks || []).length;
+        const messageCount = (dashboardData.recentMessages || []).length;
+        const collaborationCount = (dashboardData.pendingRequests || []).length;
+
+        setStats({
+          projects: projectCount,
+          tasks: taskCount,
+          messages: messageCount,
+          collaborations: collaborationCount,
+        });
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+        // Set defaults on error
+        setStats({
+          projects: 0,
+          tasks: 0,
+          messages: 0,
+          collaborations: 0,
+        });
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+
+    if (userId) {
+      fetchStats();
+    }
+  }, [userId]);
 
   // Fetch user projects with roles
   useEffect(() => {
@@ -93,65 +149,6 @@ export function Profile({ onNavigate }: ProfileProps) {
     fetchProjects();
   }, [userId]);
 
-  // Handle profile picture upload
-  const handleProfilePictureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !userId) return;
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
-      return;
-    }
-
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image size should be less than 5MB');
-      return;
-    }
-
-    try {
-      setUploading(true);
-      
-      // Read file and convert to byte array
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        try {
-          const arrayBuffer = reader.result as ArrayBuffer;
-          const byteArray = Array.from(new Uint8Array(arrayBuffer));
-
-          // Update user profile with image
-          await axiosClient.put(`/users/${userId}`, {
-            profileImage: byteArray,
-          });
-
-          toast.success('Profile picture updated successfully!');
-          refetch(); // Refresh user data
-        } catch (error: any) {
-          console.error('Error uploading profile picture:', error);
-          toast.error(error?.response?.data?.message || 'Failed to upload profile picture');
-        } finally {
-          setUploading(false);
-          // Reset file input
-          if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-          }
-        }
-      };
-      reader.onerror = () => {
-        toast.error('Error reading file');
-        setUploading(false);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-      };
-      reader.readAsArrayBuffer(file);
-    } catch (error: any) {
-      console.error('Error uploading profile picture:', error);
-      toast.error('Failed to upload profile picture');
-      setUploading(false);
-    }
-  };
 
   // Generate initials from user name
   const getInitials = (name: string | undefined): string => {
@@ -240,7 +237,14 @@ export function Profile({ onNavigate }: ProfileProps) {
                 if (profileImage) {
                   if (typeof profileImage === 'string') {
                     // Already a string (URL or base64)
-                    return <AvatarImage src={profileImage} />;
+                    return (
+                      <>
+                        <AvatarImage src={profileImage} alt={user.name} />
+                        <AvatarFallback className="bg-primary/10 text-primary text-4xl">
+                          {userInitials}
+                        </AvatarFallback>
+                      </>
+                    );
                   } else if (Array.isArray(profileImage) && profileImage.length > 0) {
                     // Byte array from backend - convert to base64
                     try {
@@ -253,7 +257,14 @@ export function Profile({ onNavigate }: ProfileProps) {
                         binaryString += String.fromCharCode.apply(null, Array.from(chunk));
                       }
                       const base64 = btoa(binaryString);
-                      return <AvatarImage src={`data:image/jpeg;base64,${base64}`} />;
+                      return (
+                        <>
+                          <AvatarImage src={`data:image/jpeg;base64,${base64}`} alt={user.name} />
+                          <AvatarFallback className="bg-primary/10 text-primary text-4xl">
+                            {userInitials}
+                          </AvatarFallback>
+                        </>
+                      );
                     } catch (error) {
                       console.error('Error converting profile image:', error);
                       return (
@@ -267,10 +278,17 @@ export function Profile({ onNavigate }: ProfileProps) {
                 
                 // If avatar exists, use it
                 if (avatar) {
-                  return <AvatarImage src={avatar} />;
+                  return (
+                    <>
+                      <AvatarImage src={avatar} alt={user.name} />
+                      <AvatarFallback className="bg-primary/10 text-primary text-4xl">
+                        {userInitials}
+                      </AvatarFallback>
+                    </>
+                  );
                 }
                 
-                // Otherwise, show initials
+                // Otherwise, show initials as fallback
                 return (
                   <AvatarFallback className="bg-primary/10 text-primary text-4xl">
                     {userInitials}
@@ -278,32 +296,6 @@ export function Profile({ onNavigate }: ProfileProps) {
                 );
               })()}
             </Avatar>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleProfilePictureUpload}
-              className="hidden"
-              id="profile-picture-upload"
-            />
-            <Button 
-              variant="outline" 
-              className="rounded-lg w-full"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-            >
-              {uploading ? (
-                <>
-                  <Upload className="mr-2 h-4 w-4 animate-spin" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Edit2 className="mr-2 h-4 w-4" />
-                  Edit Profile Picture
-                </>
-              )}
-            </Button>
           </div>
 
           {/* Info */}
@@ -331,7 +323,7 @@ export function Profile({ onNavigate }: ProfileProps) {
                 {user.email}
                 </a>
               </Button>
-              <Button variant="outline" size="sm" className="rounded-lg" asChild>
+              {/* <Button variant="outline" size="sm" className="rounded-lg" asChild>
                 <a 
                   href={formatLink(user.website, user.name, 'com')} 
                   target="_blank" 
@@ -363,17 +355,52 @@ export function Profile({ onNavigate }: ProfileProps) {
                 <Linkedin className="mr-2 h-4 w-4" />
                   {user.linkedin || `${user.name.toLowerCase().replace(/\s+/g, '')}.linkedin.com`}
                 </a>
-              </Button>
+              </Button> */}
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {user.stats && Object.entries(user.stats).map(([key, value]) => (
-                <div key={key} className="text-center p-3 bg-muted rounded-lg">
-                  <p className="text-2xl mb-1">{value}</p>
-                  <p className="text-xs text-muted-foreground">{key.charAt(0).toUpperCase() + key.slice(1)}</p>
-                </div>
-              ))}
+            <div className="grid grid-cols-3 gap-4">
+              {statsLoading ? (
+                <>
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="text-center p-3 bg-muted rounded-lg animate-pulse">
+                      <div className="h-8 bg-muted-foreground/20 rounded mb-2"></div>
+                      <div className="h-4 bg-muted-foreground/20 rounded"></div>
+                    </div>
+                  ))}
+                </>
+              ) : (
+                <>
+                  <div className="text-center p-3 bg-muted rounded-lg">
+                    <p className="text-2xl mb-1 font-semibold">{stats.projects}</p>
+                    <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                      <FolderKanban className="h-3 w-3" />
+                      Projects
+                    </p>
+                  </div>
+                  <div className="text-center p-3 bg-muted rounded-lg">
+                    <p className="text-2xl mb-1 font-semibold">{stats.tasks}</p>
+                    <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                      <Award className="h-3 w-3" />
+                      Tasks
+                    </p>
+                  </div>
+                  <div className="text-center p-3 bg-muted rounded-lg">
+                    <p className="text-2xl mb-1 font-semibold">{stats.messages}</p>
+                    <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                      <MessageSquare className="h-3 w-3" />
+                      Messages
+                    </p>
+                  </div>
+                  {/* <div className="text-center p-3 bg-muted rounded-lg">
+                    <p className="text-2xl mb-1 font-semibold">{stats.collaborations}</p>
+                    <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                      <Handshake className="h-3 w-3" />
+                      Collaborations
+                    </p>
+                  </div> */}
+                </>
+              )}
             </div>
           </div>
         </div>

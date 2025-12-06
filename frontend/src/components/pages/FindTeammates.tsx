@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
@@ -22,7 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { getCurrentUserId } from '../../utils/auth';
 
 interface FindTeammatesProps {
-  onNavigate: (page: string) => void;
+  onNavigate?: (page: string, id?: string) => void;
 }
 
 interface Teammate {
@@ -40,6 +41,7 @@ interface Teammate {
   hoursPerWeek?: string;
   lastSeen?: string;
   status: 'online' | 'offline';
+  inviteStatus?: 'none' | 'pending' | 'approved' | 'rejected';
 }
 
 interface ProjectDto {
@@ -51,6 +53,7 @@ interface ProjectDto {
 }
 
 export function FindTeammates({ onNavigate }: FindTeammatesProps) {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMajor, setSelectedMajor] = useState<string>('all');
   const [selectedYear, setSelectedYear] = useState<string>('all');
@@ -63,25 +66,140 @@ export function FindTeammates({ onNavigate }: FindTeammatesProps) {
   const [myProjects, setMyProjects] = useState<ProjectDto[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [sendingInvite, setSendingInvite] = useState(false);
+  const [collaborationRequests, setCollaborationRequests] = useState<Map<number, { status: string; projectId?: number }>>(new Map());
   const userId = getCurrentUserId();
+  const isFetchingRequestsRef = useRef(false);
+  const teammatesLengthRef = useRef(0);
+
+  // Define fetchCollaborationRequests first (using useCallback)
+  const fetchCollaborationRequests = useCallback(async () => {
+    if (!userId || myProjects.length === 0 || isFetchingRequestsRef.current) return;
+
+    isFetchingRequestsRef.current = true;
+    try {
+      // Fetch collaboration requests for all user's projects
+      const requestsMap = new Map<number, { status: string; projectId?: number }>();
+      
+      for (const project of myProjects) {
+        if (!project.projectId) continue;
+        try {
+          const res = await axiosClient.get(`/collaboration/project/${project.projectId}`, {
+            params: { ownerId: userId }
+          });
+          const requests = res.data || [];
+          
+          requests.forEach((req: any) => {
+            if (req.studentId) {
+              // If teammate already has a request, keep the one with higher priority
+              // Priority: pending > approved > rejected
+              const existing = requestsMap.get(req.studentId);
+              const newStatus = req.status?.toLowerCase() || 'pending';
+              
+              if (!existing) {
+                requestsMap.set(req.studentId, {
+                  status: newStatus,
+                  projectId: project.projectId
+                });
+              } else {
+                // Prioritize pending over others, then approved over rejected
+                const priority: Record<string, number> = {
+                  'pending': 3,
+                  'approved': 2,
+                  'rejected': 1
+                };
+                
+                if (priority[newStatus] > (priority[existing.status] || 0)) {
+                  requestsMap.set(req.studentId, {
+                    status: newStatus,
+                    projectId: project.projectId
+                  });
+                }
+              }
+            }
+          });
+        } catch (error) {
+          // Continue if one project fails
+          console.warn(`Failed to fetch requests for project ${project.projectId}:`, error);
+        }
+      }
+
+      setCollaborationRequests(requestsMap);
+
+      // Update teammates with invite status only if status changed
+      setTeammates(prev => {
+        let hasChanges = false;
+        const updated = prev.map(teammate => {
+          const request = requestsMap.get(teammate.userId);
+          if (request) {
+            const statusLower = request.status?.toLowerCase() || '';
+            const newStatus: 'none' | 'pending' | 'approved' | 'rejected' = 
+              statusLower === 'pending' ? 'pending' : 
+              statusLower === 'approved' ? 'approved' : 
+              statusLower === 'rejected' ? 'rejected' : 'none';
+            
+            // Only update if status actually changed
+            if (teammate.inviteStatus !== newStatus) {
+              hasChanges = true;
+              return {
+                ...teammate,
+                inviteStatus: newStatus
+              };
+            }
+          } else if (teammate.inviteStatus !== 'none') {
+            // Clear status if no request exists
+            hasChanges = true;
+            return {
+              ...teammate,
+              inviteStatus: 'none' as const
+            };
+          }
+          return teammate;
+        });
+        
+        // Only update state if something actually changed
+        return hasChanges ? updated : prev;
+      });
+    } catch (error) {
+      console.error('Failed to fetch collaboration requests:', error);
+    } finally {
+      isFetchingRequestsRef.current = false;
+    }
+  }, [userId, myProjects]);
 
   // Fetch teammates from backend
   useEffect(() => {
     fetchTeammates();
-  }, [searchQuery, selectedMajor, selectedYear, selectedAvailability]);
+  }, [selectedMajor, selectedYear, selectedAvailability]);
 
-  // Fetch user's projects when dialog opens
+  // Fetch user's projects on initial load
+  useEffect(() => {
+    if (userId && myProjects.length === 0) {
+      fetchMyProjects();
+    }
+  }, [userId]);
+
+  // Also fetch projects when dialog opens (to ensure they're up to date)
   useEffect(() => {
     if (inviteDialogOpen && userId) {
       fetchMyProjects();
     }
   }, [inviteDialogOpen, userId]);
 
+  // Fetch collaboration requests when projects and teammates are loaded
+  // Use ref to track teammates length to avoid loop
+  useEffect(() => {
+    const currentLength = teammates.length;
+    if (myProjects.length > 0 && currentLength > 0 && currentLength !== teammatesLengthRef.current && userId && !isFetchingRequestsRef.current) {
+      teammatesLengthRef.current = currentLength;
+      fetchCollaborationRequests();
+    }
+  }, [myProjects.length, teammates.length, userId, fetchCollaborationRequests]);
+
   const fetchTeammates = async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (searchQuery.trim()) params.append('search', searchQuery.trim());
+      // Remove search from backend call - we'll do client-side filtering like Projects
       if (selectedMajor !== 'all') params.append('major', selectedMajor);
       if (selectedYear !== 'all') params.append('year', selectedYear);
       if (selectedAvailability !== 'all') params.append('availability', selectedAvailability);
@@ -89,36 +207,40 @@ export function FindTeammates({ onNavigate }: FindTeammatesProps) {
       const res = await axiosClient.get(`/users/teammates?${params.toString()}`);
       const data = res.data || [];
 
-      // Transform to display format
-      const transformed: Teammate[] = data.map((user: any) => {
-        // Determine online status (if lastSeen is within last 5 minutes, consider online)
-        let status: 'online' | 'offline' = 'offline';
-        if (user.lastSeen) {
-          const lastSeenTime = new Date(user.lastSeen).getTime();
-          const now = Date.now();
-          const minutesSinceLastSeen = (now - lastSeenTime) / (1000 * 60);
-          status = minutesSinceLastSeen <= 5 ? 'online' : 'offline';
-        }
+      // Transform to display format and filter out current user
+      const transformed: Teammate[] = data
+        .filter((user: any) => user.userId?.toString() !== userId) // Filter out current user
+        .map((user: any) => {
+          // Determine online status (if lastSeen is within last 5 minutes, consider online)
+          let status: 'online' | 'offline' = 'offline';
+          if (user.lastSeen) {
+            const lastSeenTime = new Date(user.lastSeen).getTime();
+            const now = Date.now();
+            const minutesSinceLastSeen = (now - lastSeenTime) / (1000 * 60);
+            status = minutesSinceLastSeen <= 5 ? 'online' : 'offline';
+          }
 
-        return {
-          userId: user.userId,
-          name: user.name || 'Unknown',
-          major: user.major,
-          year: user.year,
-          location: user.location,
-          bio: user.bio,
-          skills: user.skills ? Array.from(user.skills) : [],
-          interests: user.interests ? Array.from(user.interests) : [],
-          projectCount: user.projectCount || 0,
-          rating: user.rating || 0,
-          availability: user.availability || 'Available',
-          hoursPerWeek: user.hoursPerWeek,
-          lastSeen: user.lastSeen,
-          status,
-        };
-      });
+          return {
+            userId: user.userId,
+            name: user.name || 'Unknown',
+            major: user.major,
+            year: user.year,
+            location: user.location,
+            bio: user.bio,
+            skills: user.skills ? Array.from(user.skills) : [],
+            interests: user.interests ? Array.from(user.interests) : [],
+            projectCount: user.projectCount || 0,
+            rating: user.rating || 0,
+            availability: user.availability || 'Available',
+            hoursPerWeek: user.hoursPerWeek,
+            lastSeen: user.lastSeen,
+            status,
+            inviteStatus: 'none' as const,
+          };
+        });
 
       setTeammates(transformed);
+      teammatesLengthRef.current = transformed.length;
 
       // Extract unique majors for filter
       const uniqueMajors = Array.from(new Set(
@@ -135,6 +257,7 @@ export function FindTeammates({ onNavigate }: FindTeammatesProps) {
       setLoading(false);
     }
   };
+
 
   const fetchMyProjects = async () => {
     if (!userId) return;
@@ -158,6 +281,17 @@ export function FindTeammates({ onNavigate }: FindTeammatesProps) {
   };
 
   const handleInviteClick = (teammate: Teammate) => {
+    // Check if teammate already has an invitation (pending, approved, or rejected)
+    if (teammate.inviteStatus && teammate.inviteStatus !== 'none') {
+      const statusMessages = {
+        pending: 'already has a pending invitation',
+        approved: 'has already accepted an invitation',
+        rejected: 'has already been invited (rejected)'
+      };
+      toast.warning(`${teammate.name} ${statusMessages[teammate.inviteStatus] || 'already has an invitation'}`);
+      return;
+    }
+    
     setSelectedTeammate(teammate);
     setSelectedProjectId('');
     setInviteDialogOpen(true);
@@ -166,6 +300,16 @@ export function FindTeammates({ onNavigate }: FindTeammatesProps) {
   const handleSendInvite = async () => {
     if (!selectedTeammate || !selectedProjectId) {
       toast.error('Please select a project');
+      return;
+    }
+
+    // Double-check if this teammate already has an invitation for this project
+    const existingRequest = collaborationRequests.get(selectedTeammate.userId);
+    if (existingRequest && existingRequest.status === 'pending') {
+      toast.warning(`${selectedTeammate.name} already has a pending invitation`);
+      setInviteDialogOpen(false);
+      setSelectedTeammate(null);
+      setSelectedProjectId('');
       return;
     }
 
@@ -178,18 +322,138 @@ export function FindTeammates({ onNavigate }: FindTeammatesProps) {
         },
       });
       
+      // Update the teammate's invite status to pending
+      setTeammates(prev => prev.map(t => 
+        t.userId === selectedTeammate.userId 
+          ? { ...t, inviteStatus: 'pending' as const }
+          : t
+      ));
+
+      // Update collaboration requests map
+      setCollaborationRequests(prev => {
+        const newMap = new Map(prev);
+        newMap.set(selectedTeammate.userId, { 
+          status: 'pending',
+          projectId: parseInt(selectedProjectId)
+        });
+        return newMap;
+      });
+      
       toast.success(`Invitation sent to ${selectedTeammate.name}!`);
       setInviteDialogOpen(false);
       setSelectedTeammate(null);
       setSelectedProjectId('');
     } catch (error: any) {
       console.error('Failed to send invitation:', error);
-      const errorMessage = error?.response?.data?.message || 
-                          error?.response?.data || 
-                          'Failed to send invitation';
-      toast.error(errorMessage);
+      let errorMessage = 'Failed to send invitation';
+      
+      if (error?.response?.data) {
+        // Handle different error message formats
+        if (typeof error.response.data === 'string') {
+          errorMessage = error.response.data;
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        }
+      }
+      
+      // Check for duplicate request error
+      if (errorMessage.toLowerCase().includes('already exists') || 
+          errorMessage.toLowerCase().includes('already a member')) {
+        toast.error(`${selectedTeammate.name} ${errorMessage.toLowerCase()}. Please refresh the page.`);
+        // Refresh collaboration requests to get latest status
+        fetchCollaborationRequests();
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setSendingInvite(false);
+    }
+  };
+
+  // Handle message button click - find or create conversation project
+  const handleMessageClick = async (teammate: Teammate) => {
+    if (!userId || !teammate.userId) {
+      toast.error('Unable to start conversation');
+      return;
+    }
+
+    try {
+      // First, get all projects the current user is a member of
+      const myProjectsRes = await axiosClient.get('/projects/student/me');
+      const myProjects: ProjectDto[] = myProjectsRes.data || [];
+
+      // Get all projects the teammate is a member of
+      let teammateProjectIds: number[] = [];
+      try {
+        const teammateProjectsRes = await axiosClient.get(`/student/projects/${teammate.userId}`);
+        const teammateProjectsData = teammateProjectsRes.data || [];
+        // The endpoint returns an array of objects with id, title, status
+        teammateProjectIds = teammateProjectsData.map((p: any) => p.id).filter(Boolean);
+      } catch (error) {
+        console.error('Failed to fetch teammate projects:', error);
+        // Continue - we'll just check myProjects
+      }
+
+      // Find shared projects
+      const sharedProjects = myProjects.filter(project => 
+        project.projectId && teammateProjectIds.includes(project.projectId)
+      );
+
+      if (sharedProjects.length > 0) {
+        // Navigate to the first shared project's messages
+        const projectId = sharedProjects[0].projectId;
+        if (onNavigate) {
+          onNavigate('messages', projectId?.toString());
+        } else {
+          navigate(`/messages?projectId=${projectId}`);
+        }
+        toast.success(`Opened conversation with ${teammate.name}`);
+      } else {
+        // No shared project - create a conversation project
+        try {
+          const conversationProject = await axiosClient.post('/projects', {
+            title: `Conversation with ${teammate.name}`,
+            description: `Direct message conversation`,
+            membersRequired: 2,
+            status: 'OPEN',
+            skills: []
+          });
+
+          const newProjectId = conversationProject.data.projectId;
+          
+          // Add the teammate to the project using addMember endpoint
+          try {
+            await axiosClient.post(`/projects/${newProjectId}/members`, null, {
+              params: { 
+                userId: teammate.userId,
+                role: 'MEMBER'
+              }
+            });
+          } catch (error: any) {
+            console.error('Failed to add teammate to conversation project:', error);
+            // Continue anyway - they can be added later or via collaboration request
+            toast.warning(`Project created. You may need to invite ${teammate.name} to join.`);
+          }
+
+          // Navigate to the new conversation project's messages
+          if (onNavigate) {
+            onNavigate('messages', newProjectId?.toString());
+          } else {
+            navigate(`/messages?projectId=${newProjectId}`);
+          }
+          
+          toast.success(`Started conversation with ${teammate.name}`);
+        } catch (error: any) {
+          console.error('Failed to create conversation project:', error);
+          const errorMsg = error?.response?.data?.message || error?.message || 'Unable to start conversation';
+          toast.error(errorMsg);
+        }
+      }
+    } catch (error: any) {
+      console.error('Failed to find shared projects:', error);
+      toast.error('Unable to start conversation. Please try again.');
     }
   };
 
@@ -210,8 +474,18 @@ export function FindTeammates({ onNavigate }: FindTeammatesProps) {
     return Code;
   };
 
-  // Filter teammates (additional client-side filtering if needed)
-  const filteredTeammates = teammates;
+  // Filter teammates (client-side search filtering like Projects.tsx)
+  const filteredTeammates = teammates.filter((teammate) => {
+    const searchLower = searchQuery.toLowerCase();
+    const matchesSearch = 
+      teammate.name.toLowerCase().includes(searchLower) ||
+      teammate.major?.toLowerCase().includes(searchLower) ||
+      teammate.bio?.toLowerCase().includes(searchLower) ||
+      teammate.skills?.some(skill => skill.name.toLowerCase().includes(searchLower)) ||
+      teammate.interests?.some(interest => interest.name.toLowerCase().includes(searchLower));
+    
+    return matchesSearch;
+  });
 
   if (loading) {
     return (
@@ -418,19 +692,49 @@ export function FindTeammates({ onNavigate }: FindTeammatesProps) {
 
               {/* Actions */}
               <div className="pt-4 border-t border-border flex gap-2">
-                <Button 
-                  size="sm" 
-                  className="flex-1 rounded-lg"
-                  onClick={() => handleInviteClick(teammate)}
-                >
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Invite
-                </Button>
+                {teammate.inviteStatus === 'none' ? (
+                  <Button 
+                    size="sm" 
+                    className="flex-1 rounded-lg"
+                    onClick={() => handleInviteClick(teammate)}
+                  >
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Invite
+                  </Button>
+                ) : teammate.inviteStatus === 'pending' ? (
+                  <Button 
+                    size="sm" 
+                    variant="secondary"
+                    className="flex-1 rounded-lg"
+                    disabled
+                  >
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Invited
+                  </Button>
+                ) : teammate.inviteStatus === 'approved' ? (
+                  <Button 
+                    size="sm" 
+                    variant="default"
+                    className="flex-1 rounded-lg bg-green-600 hover:bg-green-700"
+                    disabled
+                  >
+                    Accepted
+                  </Button>
+                ) : (
+                  <Button 
+                    size="sm" 
+                    variant="destructive"
+                    className="flex-1 rounded-lg"
+                    disabled
+                  >
+                    Rejected
+                  </Button>
+                )}
                 <Button 
                   variant="outline" 
                   size="sm" 
                   className="rounded-lg"
-                  onClick={() => onNavigate('messages')}
+                  onClick={() => handleMessageClick(teammate)}
                 >
                   <MessageSquare className="h-4 w-4" />
                 </Button>
@@ -459,7 +763,11 @@ export function FindTeammates({ onNavigate }: FindTeammatesProps) {
                 </p>
                 <Button onClick={() => {
                   setInviteDialogOpen(false);
-                  onNavigate('projects');
+                  if (onNavigate) {
+                    onNavigate('projects');
+                  } else {
+                    navigate('/projects');
+                  }
                 }}>
                   Create a Project
                 </Button>
@@ -473,14 +781,21 @@ export function FindTeammates({ onNavigate }: FindTeammatesProps) {
                       <SelectValue placeholder="Choose a project..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {myProjects.map((project) => (
-                        <SelectItem 
-                          key={project.projectId} 
-                          value={String(project.projectId)}
-                        >
-                          {project.title}
-                        </SelectItem>
-                      ))}
+                      {myProjects
+                        .filter((project) => {
+                          // Filter out projects that already have a pending/approved invitation for this teammate
+                          if (!selectedTeammate || !project.projectId) return true;
+                          const existingRequest = collaborationRequests.get(selectedTeammate.userId);
+                          return !existingRequest || existingRequest.projectId !== project.projectId;
+                        })
+                        .map((project) => (
+                          <SelectItem 
+                            key={project.projectId} 
+                            value={String(project.projectId)}
+                          >
+                            {project.title}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>

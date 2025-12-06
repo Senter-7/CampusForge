@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import axiosClient from '../../api/axiosClient';
 import { getCurrentUserId } from '../../utils/auth';
@@ -123,6 +124,7 @@ interface University {
 }
 
 export function Professors({ onNavigate }: ProfessorsProps) {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDept, setSelectedDept] = useState('all');
   const [loading, setLoading] = useState(true);
@@ -425,7 +427,13 @@ export function Professors({ onNavigate }: ProfessorsProps) {
               <div 
                 key={prof.professorId} 
                 className="flex items-center gap-3 p-3 bg-card rounded-lg cursor-pointer hover:bg-muted transition-colors"
-                onClick={() => onNavigate('professor-detail', String(prof.professorId))}
+                onClick={() => {
+                  if (onNavigate) {
+                    onNavigate('professor-detail', String(prof.professorId));
+                  } else {
+                    navigate(`/explore/professors/${prof.professorId}`);
+                  }
+                }}
               >
               <Avatar className="h-12 w-12">
                 <AvatarFallback className="bg-primary/10 text-primary">
@@ -465,15 +473,15 @@ export function Professors({ onNavigate }: ProfessorsProps) {
                 Add Professor
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
-              <DialogHeader>
+            <DialogContent className="sm:max-w-[500px] max-h-[90vh] !grid !flex !flex-col !p-0 overflow-hidden">
+              <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
                 <DialogTitle>Add New Professor</DialogTitle>
                 <DialogDescription>
                   Add a professor to the database. If a professor with the same email exists, it will not be duplicated.
                 </DialogDescription>
               </DialogHeader>
-              <form onSubmit={professorForm.handleSubmit(onSubmitProfessor)} className="flex flex-col flex-1 min-h-0">
-                <div className="space-y-4 py-4 overflow-y-auto flex-1 pr-2">
+              <div className="flex-1 overflow-y-auto px-6 min-h-0" style={{ maxHeight: 'calc(90vh - 200px)' }}>
+                <form onSubmit={professorForm.handleSubmit(onSubmitProfessor)} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="professor-name">Professor Name *</Label>
                     <Controller
@@ -588,38 +596,39 @@ export function Professors({ onNavigate }: ProfessorsProps) {
                       </div>
                     </div>
                   </div>
-                </div>
-                <div className="flex gap-3 pt-4 border-t border-border mt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="flex-1 rounded-lg"
-                    onClick={() => {
-                      setAddProfessorDialogOpen(false);
-                      professorForm.reset();
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    className="flex-1 rounded-lg"
-                    disabled={submittingProfessor}
-                  >
-                    {submittingProfessor ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Adding...
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Professor
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </form>
+                </form>
+              </div>
+              <div className="flex gap-3 px-6 pb-6 pt-4 border-t border-border flex-shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 rounded-lg"
+                  onClick={() => {
+                    setAddProfessorDialogOpen(false);
+                    professorForm.reset();
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  className="flex-1 rounded-lg"
+                  disabled={submittingProfessor}
+                  onClick={professorForm.handleSubmit(onSubmitProfessor)}
+                >
+                  {submittingProfessor ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Adding...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Professor
+                    </>
+                  )}
+                </Button>
+              </div>
             </DialogContent>
           </Dialog>
           <Dialog open={ratingDialogOpen} onOpenChange={(open: boolean) => {
@@ -903,7 +912,13 @@ export function Professors({ onNavigate }: ProfessorsProps) {
             <Card 
               key={professor.professorId} 
               className="p-6 rounded-xl shadow-sm border-border hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => onNavigate('professor-detail', String(professor.professorId))}
+              onClick={() => {
+                if (onNavigate) {
+                  onNavigate('professor-detail', String(professor.professorId));
+                } else {
+                  navigate(`/explore/professors/${professor.professorId}`);
+                }
+              }}
             >
             <div className="space-y-4">
               {/* Header */}
@@ -971,7 +986,11 @@ export function Professors({ onNavigate }: ProfessorsProps) {
                       onClick={(e: React.MouseEvent) => {
                         e.stopPropagation();
                         // Navigate to courses page filtered by professor
-                        onNavigate('courses');
+                        if (onNavigate) {
+                          onNavigate('courses');
+                        } else {
+                          navigate('/courses');
+                        }
                       }}
                     >
                   <BookOpen className="mr-2 h-4 w-4" />

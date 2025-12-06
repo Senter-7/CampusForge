@@ -520,15 +520,16 @@ export function Courses({ onNavigate }: CoursesProps) {
                 Add Course
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
-              <DialogHeader>
+            <DialogContent className="sm:max-w-[500px] max-h-[90vh] !grid !flex !flex-col !p-0 overflow-hidden">
+              <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
                 <DialogTitle>Add New Course</DialogTitle>
                 <DialogDescription>
                   Add a course to the database. If a course with the same code already exists at this university, it will not be duplicated.
                 </DialogDescription>
               </DialogHeader>
-              <form onSubmit={courseForm.handleSubmit(onSubmitCourse)} className="flex flex-col flex-1 min-h-0">
-                <div className="space-y-4 py-4 overflow-y-auto flex-1 pr-2">
+              <form onSubmit={courseForm.handleSubmit(onSubmitCourse)} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+                <div className="flex-1 overflow-y-auto px-6 min-h-0" style={{ maxHeight: 'calc(90vh - 200px)' }}>
+                  <div className="space-y-4 py-4">
                   <div className="space-y-2">
                     <Label htmlFor="course-code">Course Code *</Label>
                     <Controller
@@ -685,8 +686,9 @@ export function Courses({ onNavigate }: CoursesProps) {
                       Separate multiple prerequisites with commas (e.g., course codes).
                     </p>
                   </div>
+                  </div>
                 </div>
-                <div className="flex gap-3 pt-4 border-t border-border mt-4">
+                <div className="flex gap-3 px-6 pb-6 pt-4 border-t border-border flex-shrink-0">
                   <Button
                     type="button"
                     variant="outline"

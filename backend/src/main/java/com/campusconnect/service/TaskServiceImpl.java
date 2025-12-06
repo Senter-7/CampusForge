@@ -1,5 +1,6 @@
 package com.campusconnect.service;
 
+import com.campusconnect.dto.NotificationDto;
 import com.campusconnect.dto.TaskRequestDTO;
 import com.campusconnect.dto.TaskResponseDTO;
 import com.campusconnect.entity.Project;
@@ -10,8 +11,10 @@ import com.campusconnect.repository.ProjectRepository;
 import com.campusconnect.repository.ProjectMemberRepository;
 import com.campusconnect.repository.TaskRepository;
 import com.campusconnect.repository.UserRepository;
+import com.campusconnect.service.NotificationService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +29,9 @@ public class TaskServiceImpl implements TaskService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final ProjectMemberRepository projectMemberRepository;
+
+    @Autowired
+    private NotificationService notificationService;
 
     
 
@@ -48,6 +54,7 @@ public class TaskServiceImpl implements TaskService {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new EntityNotFoundException("Task not found"));
 
+        Task.Status oldStatus = task.getStatus();
         Task.Status newStatus = Task.Status.valueOf(status.toUpperCase());
         task.setStatus(newStatus);
         
@@ -56,7 +63,31 @@ public class TaskServiceImpl implements TaskService {
             task.setCompletedAt(java.time.LocalDateTime.now());
         }
         
-        return mapToDto(taskRepository.save(task));
+        Task savedTask = taskRepository.save(task);
+        
+        // Notify project creator and assignee when task is completed
+        if (newStatus == Task.Status.DONE && oldStatus != Task.Status.DONE) {
+            try {
+                Project project = savedTask.getProject();
+                User projectCreator = project.getCreator();
+                
+                // Notify project creator (if different from assignee)
+                if (projectCreator != null && 
+                    (savedTask.getAssignedTo() == null || !projectCreator.getUserId().equals(savedTask.getAssignedTo().getUserId()))) {
+                    NotificationDto notification = new NotificationDto();
+                    notification.setUserId(projectCreator.getUserId());
+                    notification.setMessage(String.format("Task \"%s\" has been completed in project \"%s\"", 
+                        savedTask.getTitle() != null ? savedTask.getTitle() : "Untitled Task",
+                        project.getTitle() != null ? project.getTitle() : "Untitled Project"));
+                    notification.setRead(false);
+                    notificationService.createNotification(notification);
+                }
+            } catch (Exception e) {
+                System.err.println("Failed to create task completion notification: " + e.getMessage());
+            }
+        }
+        
+        return mapToDto(savedTask);
     }
 
 
@@ -100,7 +131,24 @@ public class TaskServiceImpl implements TaskService {
                 .dueDate(dto.getDueDate())
                 .build();
 
-        return mapToDto(taskRepository.save(task));
+        Task savedTask = taskRepository.save(task);
+        
+        // Notify assignee if task was assigned to someone (including self-assignment)
+        if (assignee != null) {
+            try {
+                NotificationDto notification = new NotificationDto();
+                notification.setUserId(assignee.getUserId());
+                notification.setMessage(String.format("You have been assigned a new task: \"%s\" in project \"%s\"", 
+                    savedTask.getTitle() != null ? savedTask.getTitle() : "Untitled Task",
+                    project.getTitle() != null ? project.getTitle() : "Untitled Project"));
+                notification.setRead(false);
+                notificationService.createNotification(notification);
+            } catch (Exception e) {
+                System.err.println("Failed to create task assignment notification: " + e.getMessage());
+            }
+        }
+        
+        return mapToDto(savedTask);
     }
 
     @Override
@@ -117,8 +165,26 @@ public class TaskServiceImpl implements TaskService {
                 .orElseThrow(() -> new RuntimeException("Assignee is not a member of this project."));
 
         // Authorization (only leader/mentor can assign) is handled by @PreAuthorize in the controller
+        User previousAssignee = task.getAssignedTo();
         task.setAssignedTo(assignee);
-        return mapToDto(taskRepository.save(task));
+        Task savedTask = taskRepository.save(task);
+        
+        // Notify the new assignee if assignment changed
+        if (assignee != null && (previousAssignee == null || !previousAssignee.getUserId().equals(assignee.getUserId()))) {
+            try {
+                NotificationDto notification = new NotificationDto();
+                notification.setUserId(assignee.getUserId());
+                notification.setMessage(String.format("You have been assigned the task \"%s\" in project \"%s\"", 
+                    savedTask.getTitle() != null ? savedTask.getTitle() : "Untitled Task",
+                    savedTask.getProject().getTitle() != null ? savedTask.getProject().getTitle() : "Untitled Project"));
+                notification.setRead(false);
+                notificationService.createNotification(notification);
+            } catch (Exception e) {
+                System.err.println("Failed to create task assignment notification: " + e.getMessage());
+            }
+        }
+        
+        return mapToDto(savedTask);
     }
 
     @Override

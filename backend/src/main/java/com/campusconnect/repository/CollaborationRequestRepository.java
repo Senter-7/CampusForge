@@ -12,6 +12,7 @@ import java.util.List;
 public interface CollaborationRequestRepository extends JpaRepository<CollaborationRequest, Long> {
     List<CollaborationRequest> findByProject(Project project);
     List<CollaborationRequest> findByStudent(User student);
+    List<CollaborationRequest> findByOwner(User owner); // Requests received by a project owner
     boolean existsByProjectAndStudent(Project project, User student);
 
     @Query("SELECT cr FROM CollaborationRequest cr WHERE cr.student.userId = :userId AND cr.status = 'PENDING'")

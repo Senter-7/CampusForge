@@ -474,9 +474,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             )}
           </div>
 
-          <Button className="w-full rounded-xl" onClick={() => handleNavigate('myprojects')}>
-            Create New Project
-          </Button>
+          
         </div>
 
         {/* Sidebar Content */}

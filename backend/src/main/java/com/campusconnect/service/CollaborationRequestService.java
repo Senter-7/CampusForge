@@ -14,6 +14,9 @@ public interface CollaborationRequestService {
     // Owner views all requests for their project
     List<CollaborationRequestDto> getRequestsByProject(Long projectId, Long ownerId);
 
-    // Student views all collaboration requests they’ve sent
+    // Student views all collaboration requests they've sent
     List<CollaborationRequestDto> getRequestsByStudent(Long studentId);
+    
+    // Owner views all pending collaboration requests they've received
+    List<CollaborationRequestDto> getPendingRequestsByOwner(Long ownerId);
 }

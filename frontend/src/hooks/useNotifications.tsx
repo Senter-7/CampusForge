@@ -20,7 +20,7 @@ export const useNotifications = () => {
       return res.data || [];
     },
     refetchInterval: 30000, // Refetch every 30 seconds
-    staleTime: 10000, // Consider data stale after 10 seconds
+    staleTime: 0, // Always consider data stale to allow immediate refetch after mutations
   });
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
@@ -30,8 +30,35 @@ export const useNotifications = () => {
       const res = await axiosClient.put(`/notifications/${notificationId}/read`);
       return res.data;
     },
+    onMutate: async (notificationId: number) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["notifications"] });
+      
+      // Snapshot the previous value
+      const previousNotifications = queryClient.getQueryData<Notification[]>(["notifications"]);
+      
+      // Optimistically update to mark as read
+      if (previousNotifications) {
+        queryClient.setQueryData<Notification[]>(["notifications"], (old) => {
+          if (!old) return old;
+          return old.map((n) =>
+            n.notificationId === notificationId ? { ...n, isRead: true } : n
+          );
+        });
+      }
+      
+      return { previousNotifications };
+    },
+    onError: (err, notificationId, context) => {
+      // Rollback on error
+      if (context?.previousNotifications) {
+        queryClient.setQueryData(["notifications"], context.previousNotifications);
+      }
+    },
     onSuccess: () => {
+      // Refetch to ensure we have the latest data from server
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.refetchQueries({ queryKey: ["notifications"] });
     },
   });
 

@@ -85,6 +85,18 @@ interface TaskFormValues {
   assignedToId: string;
 }
 
+interface CollaborationRequestDto {
+  requestId?: number;
+  projectId?: number;
+  studentId?: number;
+  studentName?: string;
+  ownerId?: number;
+  ownerName?: string;
+  projectTitle?: string;
+  status?: string;
+  createdAt?: string;
+}
+
 export function ProjectDetail({ projectId: propProjectId, onNavigate }: ProjectDetailProps) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -103,6 +115,8 @@ export function ProjectDetail({ projectId: propProjectId, onNavigate }: ProjectD
   const [createTaskDialogOpen, setCreateTaskDialogOpen] = useState(false);
   const [creatingTask, setCreatingTask] = useState(false);
   const [updatingTask, setUpdatingTask] = useState<number | null>(null);
+  const [joiningProject, setJoiningProject] = useState(false);
+  const [collaborationRequestStatus, setCollaborationRequestStatus] = useState<'none' | 'pending' | 'approved' | 'rejected' | null>(null);
   const userId = getCurrentUserId();
 
   const handleNavigate = (page: string, navId?: string) => {
@@ -133,8 +147,9 @@ export function ProjectDetail({ projectId: propProjectId, onNavigate }: ProjectD
   useEffect(() => {
     if (projectId) {
       fetchProjectData();
+      checkCollaborationRequest();
     }
-  }, [projectId]);
+  }, [projectId, userId]);
 
   const fetchProjectData = async () => {
     if (!projectId) return;
@@ -156,11 +171,99 @@ export function ProjectDetail({ projectId: propProjectId, onNavigate }: ProjectD
 
       // Fetch tasks (may fail if user is not a member)
       await fetchTasks();
+      
+      // Check collaboration request status
+      await checkCollaborationRequest();
     } catch (error: any) {
       console.error('Failed to fetch project:', error);
       toast.error('Failed to load project details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Check if user has already sent a collaboration request for this project
+  const checkCollaborationRequest = async () => {
+    if (!userId || !projectId) {
+      setCollaborationRequestStatus(null);
+      return;
+    }
+
+    try {
+      const userIdNum = Number(userId);
+      const requestsRes = await axiosClient.get<CollaborationRequestDto[]>(`/collaboration/student/${userIdNum}`);
+      const requests = requestsRes.data || [];
+      
+      // Find request for this project
+      const projectRequest = requests.find(req => req.projectId?.toString() === projectId?.toString());
+      
+      if (projectRequest) {
+        setCollaborationRequestStatus(projectRequest.status?.toLowerCase() as 'pending' | 'approved' | 'rejected' || 'none');
+      } else {
+        setCollaborationRequestStatus('none');
+      }
+    } catch (error) {
+      console.error('Failed to check collaboration request:', error);
+      setCollaborationRequestStatus(null);
+    }
+  };
+
+  // Handle joining project by sending collaboration request
+  const handleJoinProject = async () => {
+    if (!userId || !projectId || joiningProject) return;
+
+    setJoiningProject(true);
+    try {
+      const userIdNum = Number(userId);
+      const projectIdNum = Number(projectId);
+
+      await axiosClient.post('/collaboration/send', null, {
+        params: {
+          projectId: projectIdNum,
+          studentId: userIdNum,
+        },
+      });
+
+      toast.success('Join request sent! The project owner will be notified.');
+      setCollaborationRequestStatus('pending');
+      
+      // Refresh members list to check if user was auto-added
+      try {
+        const membersRes = await axiosClient.get<ProjectMemberDto[]>(`/projects/${projectId}/members`);
+        setMembers(membersRes.data || []);
+      } catch (error) {
+        // Ignore errors when refreshing members
+      }
+    } catch (error: any) {
+      console.error('Failed to send join request:', error);
+      let errorMessage = 'Failed to send join request';
+      
+      if (error?.response?.data) {
+        if (typeof error.response.data === 'string') {
+          errorMessage = error.response.data;
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        }
+      }
+      
+      // Check for specific error messages
+      if (errorMessage.toLowerCase().includes('already exists')) {
+        toast.warning('You have already sent a request to join this project.');
+        await checkCollaborationRequest(); // Refresh status
+      } else if (errorMessage.toLowerCase().includes('already a member')) {
+        toast.info('You are already a member of this project.');
+        // Refresh members to update UI
+        try {
+          const membersRes = await axiosClient.get<ProjectMemberDto[]>(`/projects/${projectId}/members`);
+          setMembers(membersRes.data || []);
+        } catch (err) {
+          // Ignore
+        }
+      } else {
+        toast.error(errorMessage);
+      }
+    } finally {
+      setJoiningProject(false);
     }
   };
 
@@ -445,10 +548,39 @@ export function ProjectDetail({ projectId: propProjectId, onNavigate }: ProjectD
                 Project Messages
               </Button>
             ) : openSpots > 0 ? (
-            <Button className="w-full rounded-xl">
-              <Users className="mr-2 h-4 w-4" />
-              Join Project
-            </Button>
+              collaborationRequestStatus === 'pending' ? (
+                <Button variant="outline" className="w-full rounded-xl" disabled>
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  Request Sent
+                </Button>
+              ) : collaborationRequestStatus === 'approved' ? (
+                <Button variant="outline" className="w-full rounded-xl" disabled>
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  Request Approved
+                </Button>
+              ) : collaborationRequestStatus === 'rejected' ? (
+                <Button variant="outline" className="w-full rounded-xl" disabled>
+                  Request Declined
+                </Button>
+              ) : (
+                <Button 
+                  className="w-full rounded-xl"
+                  onClick={handleJoinProject}
+                  disabled={joiningProject}
+                >
+                  {joiningProject ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending Request...
+                    </>
+                  ) : (
+                    <>
+                      <Users className="mr-2 h-4 w-4" />
+                      Join Project
+                    </>
+                  )}
+                </Button>
+              )
             ) : (
               <Button variant="outline" className="w-full rounded-xl" disabled>
                 <Users className="mr-2 h-4 w-4" />

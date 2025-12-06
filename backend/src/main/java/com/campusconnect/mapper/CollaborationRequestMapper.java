@@ -17,8 +17,13 @@ public class CollaborationRequestMapper {
         }
 
         if (request.getStudent() != null) {
-            dto.setStudentId(request.getStudent().getUserId()); // ✅ fixed here
+            dto.setStudentId(request.getStudent().getUserId()); // Student who sends the request
             dto.setStudentName(request.getStudent().getName());
+        }
+
+        if (request.getOwner() != null) {
+            dto.setOwnerId(request.getOwner().getUserId()); // Project owner who receives the request
+            dto.setOwnerName(request.getOwner().getName());
         }
 
         dto.setStatus(request.getStatus());

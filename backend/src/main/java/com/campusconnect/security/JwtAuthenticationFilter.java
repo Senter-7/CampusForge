@@ -35,16 +35,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
-            String username = jwtUtil.extractUsername(token);
+            
+            // ✅ Validate token first before extracting username
+            // This prevents ExpiredJwtException from being thrown
+            if (jwtUtil.validateToken(token)) {
+                String username = jwtUtil.extractUsername(token);
 
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserPrincipal userDetails = (UserPrincipal) userDetailsService.loadUserByUsername(username);
-
-                if (jwtUtil.validateToken(token)) {
-                    UsernamePasswordAuthenticationToken auth =
-                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                    SecurityContextHolder.getContext().setAuthentication(auth);
+                if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                    try {
+                        UserPrincipal userDetails = (UserPrincipal) userDetailsService.loadUserByUsername(username);
+                        UsernamePasswordAuthenticationToken auth =
+                                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                        SecurityContextHolder.getContext().setAuthentication(auth);
+                    } catch (UsernameNotFoundException e) {
+                        // User not found - token is invalid, but don't throw exception
+                        // Let the request continue and Spring Security will handle unauthorized requests
+                    }
                 }
+            } else {
+                // Token is invalid or expired - set 401 response for authenticated endpoints
+                // But don't throw exception, let the request continue
+                // Spring Security will handle the authorization check
             }
         }
         

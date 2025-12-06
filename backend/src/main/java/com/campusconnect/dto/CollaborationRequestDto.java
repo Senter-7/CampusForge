@@ -6,8 +6,10 @@ import java.sql.Timestamp;
 public class CollaborationRequestDto {
     private Long requestId;
     private Long projectId;
-    private Long studentId;
+    private Long studentId; // Student who sends the request (wants to join)
     private String studentName;
+    private Long ownerId; // Project owner who receives the request
+    private String ownerName;
     private String projectTitle;
     private Status status;
     private Timestamp createdAt;
@@ -24,6 +26,12 @@ public class CollaborationRequestDto {
 
     public String getStudentName() { return studentName; }
     public void setStudentName(String studentName) { this.studentName = studentName; }
+
+    public Long getOwnerId() { return ownerId; }
+    public void setOwnerId(Long ownerId) { this.ownerId = ownerId; }
+
+    public String getOwnerName() { return ownerName; }
+    public void setOwnerName(String ownerName) { this.ownerName = ownerName; }
 
     public String getProjectTitle() { return projectTitle; }
     public void setProjectTitle(String projectTitle) { this.projectTitle = projectTitle; }

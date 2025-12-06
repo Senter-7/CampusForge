@@ -61,7 +61,7 @@ public class MessageServiceImpl implements MessageService {
 
         return messageRepository.findByProjectOrderByCreatedAtAsc(project)
                 .stream()
-                .map(this::toDto)
+                .map(messageMapper::toDto)
                 .collect(Collectors.toList());
     }
 
@@ -85,18 +85,8 @@ public class MessageServiceImpl implements MessageService {
     public List<MessageDto> getRecentMessagesForUser(Long userId) {
         return messageRepository.findRecentMessagesByUser(userId)
                 .stream()
-                .map(this::toDto)
+                .map(messageMapper::toDto)
                 .collect(Collectors.toList());
     }
 
-    private MessageDto toDto(Message msg) {
-        return MessageDto.builder()
-                .messageId(msg.getMessageId())
-                .projectId(msg.getProject().getProjectId())
-                .senderId(msg.getSender() != null ? msg.getSender().getUserId() : null)
-                .senderName(msg.getSender() != null ? msg.getSender().getName() : "Unknown")
-                .content(msg.getContent())
-                .createdAt(msg.getCreatedAt().toString())
-                .build();
-    }
 }
